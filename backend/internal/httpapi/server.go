@@ -22,6 +22,7 @@ import (
 	"nanoditor/internal/notes"
 	"nanoditor/internal/pathsafe"
 	"nanoditor/internal/store"
+	"nanoditor/internal/term"
 )
 
 type Server struct {
@@ -32,7 +33,8 @@ type Server struct {
 	Notes *notes.Service
 	Git   *gitx.Service
 	Auth  *auth.Middleware
-	Web   fs.FS // built frontend (dist)
+	Term  *term.Manager // nil unless TERMINAL=on
+	Web   fs.FS         // built frontend (dist)
 }
 
 func (s *Server) Routes() http.Handler {
@@ -72,6 +74,12 @@ func (s *Server) Routes() http.Handler {
 		r.Get("/api/fs/search", s.fsSearch)
 
 		r.Get("/api/notes/resolve", s.notesResolve)
+
+		r.Get("/api/term", s.termStatus)
+		r.Post("/api/term/check", s.termCheck)
+		r.Post("/api/term", s.termStart)
+		r.Delete("/api/term/{id}", s.termClose)
+		r.Get("/api/term/{id}/ws", s.termSocket)
 
 		r.Get("/api/git/repos", s.gitRepos)
 		r.Get("/api/git/status", s.gitStatus)

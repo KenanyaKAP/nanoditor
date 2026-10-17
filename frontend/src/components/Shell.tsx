@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { FolderOpen, GitBranch, RefreshCw, Settings } from 'lucide-react'
+import { FolderOpen, GitBranch, RefreshCw, Settings, SquareTerminal } from 'lucide-react'
 import { cx, store } from '../lib/util'
-import { useSettings } from '../api/queries'
+import { useMe, useSettings } from '../api/queries'
 import { recordLocation } from '../lib/nav'
 import { useCurrentWorkspace } from '../features/workspaces/workspace'
 
 const tabs = [
   { to: '/files', label: 'Files', icon: FolderOpen },
   { to: '/git', label: 'Git', icon: GitBranch },
+  { to: '/terminal', label: 'Terminal', icon: SquareTerminal },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -65,6 +66,8 @@ export function Shell() {
   const loc = useLocation()
   const navigate = useNavigate()
   const [workspace] = useCurrentWorkspace()
+  // The Terminal tab only exists when the server has it on (TERMINAL=on).
+  const terminal = useMe().data?.terminal ?? false
 
   // Remember the last screen of each tab, so switching tabs returns there.
   useEffect(() => {
@@ -87,7 +90,7 @@ export function Shell() {
       {!keyboard && (
         <nav className="shrink-0 border-t border-line bg-bg/95 pb-safe backdrop-blur px-safe">
           <div className="flex">
-            {tabs.map((t) => {
+            {tabs.filter((t) => terminal || t.to !== '/terminal').map((t) => {
               const active = loc.pathname.startsWith(t.to)
               return (
                 <NavLink

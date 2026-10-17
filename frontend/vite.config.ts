@@ -10,7 +10,8 @@ export default defineConfig({
     port: 7779,
     strictPort: true,
     proxy: {
-      '/api': { target: 'http://127.0.0.1:7778', xfwd: false },
+      // ws: the terminal page streams over a WebSocket.
+      '/api': { target: 'http://127.0.0.1:7778', xfwd: false, ws: true },
     },
   },
   build: {

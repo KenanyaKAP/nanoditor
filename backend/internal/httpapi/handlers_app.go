@@ -20,6 +20,7 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 		"version":  s.Cfg.Version,
 		"home":     s.Cfg.Home,
 		"roots":    s.Box.Roots(),
+		"terminal": s.Term != nil,
 	})
 }
 

@@ -16,6 +16,10 @@ type Config struct {
 	DevTrustLocal   bool
 	TailscaleSocket string
 	Version         string
+	// Terminal page: a login shell on the host, over SSH to TerminalSSH.
+	Terminal     bool
+	TerminalSSH  string
+	TerminalUser string
 }
 
 func Load() Config {
@@ -32,6 +36,10 @@ func Load() Config {
 		DevTrustLocal:   env("DEV_TRUST_LOCAL", "false") == "true",
 		TailscaleSocket: env("TAILSCALE_SOCKET", "/var/run/tailscale/tailscaled.sock"),
 		Version:         env("APP_VERSION", "dev"),
+		Terminal:        on(env("TERMINAL", "off")),
+		TerminalSSH:     env("TERMINAL_SSH", "127.0.0.1:22"),
+		// The home folder is usually named after the account.
+		TerminalUser: env("TERMINAL_USER", filepath.Base(home)),
 	}
 	return c
 }
@@ -41,6 +49,14 @@ func env(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func on(s string) bool {
+	switch strings.ToLower(s) {
+	case "on", "true", "1", "yes":
+		return true
+	}
+	return false
 }
 
 func list(s string) []string {

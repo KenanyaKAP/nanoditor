@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { EditorView } from '@codemirror/view'
 import {
   cursorCharLeft,
@@ -39,6 +39,7 @@ import {
   Brackets,
   ChevronDown,
 } from 'lucide-react'
+import { keyClass, pressProps, RepeatButton } from '../components/press'
 import { cx } from '../lib/util'
 import { insertSpec, linePrefixSpec, linkSpec, wrapSpec } from './mdCommands'
 
@@ -97,22 +98,6 @@ const arrows = [
 ]
 
 /**
- * Props for a toolbar button that must not take focus from the editor
- * (that would close the keyboard). The action runs on click, not on
- * pointerdown, so swiping the row to scroll it doesn't press the button under
- * the finger: a scroll cancels the click.
- */
-function pressProps(run: () => void) {
-  return {
-    onPointerDown: (e: React.PointerEvent) => e.preventDefault(),
-    onMouseDown: (e: React.MouseEvent) => e.preventDefault(),
-    onClick: run,
-  }
-}
-
-const btn = 'flex h-11 min-w-[42px] shrink-0 select-none items-center justify-center px-2 text-fg active:bg-line [-webkit-touch-callout:none]'
-
-/**
  * A row of editing shortcuts that sits at the bottom of the editor, i.e. just
  * above the iOS keyboard (the shell shrinks to the visual viewport).
  */
@@ -149,7 +134,7 @@ export function EditorToolbar({
         <button
           aria-label="Shift: arrows select"
           aria-pressed={shift}
-          className={cx(btn, shift && 'bg-accent text-accent-fg active:bg-accent')}
+          className={cx(keyClass, shift && 'bg-accent text-accent-fg active:bg-accent')}
           {...pressProps(() => setShift(!shift))}
         >
           <ArrowBigUp className="h-[18px] w-[18px]" />
@@ -160,7 +145,7 @@ export function EditorToolbar({
           </RepeatButton>
         ))}
         {actions.map((a) => (
-          <button key={a.key} aria-label={a.label} className={btn} {...pressProps(() => view && a.run(view))}>
+          <button key={a.key} aria-label={a.label} className={keyClass} {...pressProps(() => view && a.run(view))}>
             {a.content}
           </button>
         ))}
@@ -178,43 +163,5 @@ export function EditorToolbar({
         </button>
       )}
     </div>
-  )
-}
-
-/** A toolbar button that repeats while held, like a keyboard's arrow keys. */
-function RepeatButton({ label, onFire, children }: { label: string; onFire: () => void; children: ReactNode }) {
-  const timer = useRef<number>()
-  const repeated = useRef(false)
-  const fire = useRef(onFire)
-  fire.current = onFire
-  const stop = () => {
-    window.clearTimeout(timer.current)
-    window.clearInterval(timer.current)
-    timer.current = undefined
-  }
-  useEffect(() => stop, [])
-  return (
-    <button
-      aria-label={label}
-      className={btn}
-      onPointerDown={(e) => {
-        e.preventDefault()
-        stop()
-        repeated.current = false
-        timer.current = window.setTimeout(() => {
-          repeated.current = true
-          fire.current()
-          timer.current = window.setInterval(() => fire.current(), 70)
-        }, 400)
-      }}
-      onMouseDown={(e) => e.preventDefault()}
-      onPointerUp={stop}
-      onPointerCancel={stop}
-      onPointerLeave={stop}
-      // A tap fires once; a hold already fired while held.
-      onClick={() => !repeated.current && fire.current()}
-    >
-      {children}
-    </button>
   )
 }

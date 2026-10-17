@@ -10,6 +10,25 @@ export interface Me {
   version: string
   home: string
   roots: string[]
+  /** TERMINAL=on: the Terminal page is available. */
+  terminal: boolean
+}
+
+/** A shell running on the host; it keeps running while no page is attached. */
+export interface TermSession {
+  id: string
+  cwd: string
+  created: number
+}
+
+export interface TermStatus {
+  /** The app's SSH key is in ~/.ssh/authorized_keys. */
+  authorized: boolean
+  user: string
+  addr: string
+  /** The line to add to ~/.ssh/authorized_keys to allow the terminal. */
+  authorizedKey: string
+  sessions: TermSession[]
 }
 
 /** App-wide settings. Everything project-specific is in WorkspaceSettings. */

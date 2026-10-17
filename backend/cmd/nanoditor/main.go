@@ -22,6 +22,7 @@ import (
 	"nanoditor/internal/notes"
 	"nanoditor/internal/pathsafe"
 	"nanoditor/internal/store"
+	"nanoditor/internal/term"
 	"nanoditor/web"
 )
 
@@ -56,6 +57,10 @@ func main() {
 		Git:   &gitx.Service{R: &gitx.Runner{}},
 		Auth:  auth.NewMiddleware(auth.NewLocalAPI(cfg.TailscaleSocket), cfg.AllowedLogins, cfg.DevTrustLocal, httpapi.WriteDenied),
 		Web:   web.FS(),
+	}
+	if cfg.Terminal {
+		srv.Term = term.NewManager(term.Config{Addr: cfg.TerminalSSH, User: cfg.TerminalUser, Home: cfg.Home, DataDir: cfg.DataDir})
+		log.Printf("terminal on: SSH to %s as %s", cfg.TerminalSSH, cfg.TerminalUser)
 	}
 	if srv.Web == nil {
 		log.Print("warning: frontend not embedded; only the API is served")

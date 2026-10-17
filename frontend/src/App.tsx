@@ -12,6 +12,7 @@ import { RepoView } from './features/git/RepoView'
 import { DiffPage } from './features/git/DiffPage'
 import { CommitPage } from './features/git/CommitPage'
 import { SettingsPage } from './features/settings/SettingsPage'
+import { TerminalPage } from './features/terminal/TerminalPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,7 @@ const router = createBrowserRouter([
       { path: '/git/repo', element: <RepoView /> },
       { path: '/git/diff', element: <DiffPage /> },
       { path: '/git/commit', element: <CommitPage /> },
+      { path: '/terminal', element: <TerminalPage /> },
       { path: '/settings', element: <SettingsPage /> },
       { path: '*', element: <Navigate to="/files" replace /> },
     ],
