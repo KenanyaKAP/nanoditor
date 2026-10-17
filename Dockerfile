@@ -20,13 +20,17 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/nanoditor ./cmd/na
 
 # 3. Small runtime with the real git and ssh.
 FROM alpine:3.20
+ARG HOST_HOME=/home/app
+ARG PUID=1000
+ARG PGID=1000
 RUN apk add --no-cache git openssh-client ripgrep ca-certificates tzdata \
  && git config --system safe.directory '*' \
  # ssh refuses to run for a uid without a passwd entry, so mirror the host user.
- && adduser -D -u 1000 -h /home/ken -s /bin/sh ken
+ && addgroup -g "$PGID" app \
+ && adduser -D -u "$PUID" -G app -h "$HOST_HOME" -s /bin/sh app
 COPY --from=server /out/nanoditor /usr/local/bin/nanoditor
 ARG APP_VERSION=dev
 ENV APP_VERSION=${APP_VERSION}
-USER 1000:1000
+USER ${PUID}:${PGID}
 EXPOSE 7777
 ENTRYPOINT ["/usr/local/bin/nanoditor"]

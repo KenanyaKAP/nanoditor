@@ -19,7 +19,10 @@ type Config struct {
 }
 
 func Load() Config {
-	home := env("HOME", "/home/ken")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "/"
+	}
 	c := Config{
 		ListenAddr:      env("LISTEN_ADDR", ":7777"),
 		DataDir:         env("DATA_DIR", filepath.Join(home, ".local/share/nanoditor")),

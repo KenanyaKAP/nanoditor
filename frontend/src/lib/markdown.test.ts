@@ -29,7 +29,7 @@ describe('paths', () => {
     expect(relative('/a/b', '/a/b/c/d')).toBe('c/d')
     expect(relative('/a/b', '/a/bc')).toBeNull()
     expect(resolveFrom('/v/notes', './img/x.png')).toBe('/v/notes/img/x.png')
-    expect(tildify('/home/ken/x', '/home/ken')).toBe('~/x')
+    expect(tildify('/home/me/x', '/home/me')).toBe('~/x')
   })
 })
 

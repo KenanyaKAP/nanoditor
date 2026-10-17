@@ -23,7 +23,7 @@ export function ConflictSheet({ doc }: { doc: Doc }) {
     <Sheet open={doc.saveState === 'conflict'} onClose={doc.dismissConflict} title="File changed on disk">
       <div className="space-y-3 p-4">
         <p className="text-[15px] text-muted">
-          Someone (maybe your Mac or Obsidian) changed this file after you opened it. What should happen to your
+          Something (another editor or Obsidian) changed this file after you opened it. What should happen to your
           version?
         </p>
         <Button

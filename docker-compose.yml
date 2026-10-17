@@ -7,17 +7,20 @@ services:
       context: .
       args:
         APP_VERSION: ${APP_VERSION:-dev}
+        HOST_HOME: ${HOST_HOME:?set HOST_HOME in .env}
+        PUID: ${PUID:-1000}
+        PGID: ${PGID:-1000}
     image: nanoditor:latest
     container_name: nanoditor
     restart: unless-stopped
-    user: "1000:1000"
+    user: "${PUID:-1000}:${PGID:-1000}"
     env_file: .env
     # Host networking, not a port mapping: Docker's proxy rewrites the source
     # IP of traffic arriving over Tailscale to the bridge gateway, which breaks
     # the Tailscale WhoIs check. On the host network the app sees real peers.
     network_mode: host
     environment:
-      HOME: /home/ken
+      HOME: ${HOST_HOME}
       # Listens on 0.0.0.0; every request must pass the Tailscale WhoIs check.
       LISTEN_ADDR: ":${PORT:-7777}"
       # ./data (SQLite + trash), relative so the project folder can be renamed.
@@ -25,7 +28,7 @@ services:
       TAILSCALE_SOCKET: /var/run/tailscale/tailscaled.sock
     volumes:
       # Same path inside and out, so ~/.gitconfig, ~/.ssh and file paths match the host.
-      - /home/ken:/home/ken
+      - ${HOST_HOME}:${HOST_HOME}
       - ./data:/data
       # Other disks (e.g. /mnt/windows). rslave so drives mounted after the
       # container starts still show up inside it.

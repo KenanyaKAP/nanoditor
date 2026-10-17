@@ -60,7 +60,7 @@ func (r *Runner) run(ctx context.Context, repo string, o runOpts, args ...string
 		"GIT_PAGER=cat",
 	)
 	if !o.write {
-		// Read-only commands must not take index.lock (VS Code on the Mac may hold it).
+		// Read-only commands must not take index.lock (an editor like VS Code may hold it).
 		env = append(env, "GIT_OPTIONAL_LOCKS=0")
 	}
 	cmd.Env = env
@@ -97,7 +97,7 @@ func gitError(args []string, res *Result) error {
 	}
 	switch {
 	case strings.Contains(msg, "index.lock"):
-		return apperr.Conflict("git_locked", "Another git process is using this repo (VS Code on your Mac?). Try again in a moment.").WithDetail(msg)
+		return apperr.Conflict("git_locked", "Another git process is using this repo (VS Code?). Try again in a moment.").WithDetail(msg)
 	case strings.Contains(msg, "not a git repository"):
 		return apperr.BadRequest("not a git repository").WithDetail(msg)
 	case strings.Contains(msg, "Permission denied (publickey") || strings.Contains(msg, "Host key verification failed"):
