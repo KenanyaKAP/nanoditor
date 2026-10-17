@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 247 247 248;
+  --surface: 255 255 255;
+  --raised: 240 240 243;
+  --line: 226 226 232;
+  --fg: 24 24 27;
+  --muted: 113 113 122;
+  --accent: 79 70 229;
+  --accent-fg: 255 255 255;
+  --add: 22 163 74;
+  --del: 220 38 38;
+  --warn: 217 119 6;
+  --add-bg: 22 163 74;
+  --del-bg: 220 38 38;
+  color-scheme: light;
+}
+
+:root.dark {
+  --bg: 17 18 20;
+  --surface: 26 27 30;
+  --raised: 36 37 41;
+  --line: 48 49 54;
+  --fg: 236 236 240;
+  --muted: 150 150 160;
+  --accent: 129 140 248;
+  --accent-fg: 17 18 20;
+  --add: 74 222 128;
+  --del: 248 113 113;
+  --warn: 251 191 36;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  @apply bg-bg text-fg antialiased;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* iOS zooms into inputs under 16px; keep them at 16px. */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.px-safe {
+  padding-left: max(env(safe-area-inset-left), 0px);
+  padding-right: max(env(safe-area-inset-right), 0px);
+}
+
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* Rendered markdown */
+.md {
+  @apply text-[15px] leading-relaxed break-words;
+}
+.md h1 { @apply text-2xl font-bold mt-5 mb-3; }
+.md h2 { @apply text-xl font-bold mt-5 mb-2; }
+.md h3 { @apply text-lg font-semibold mt-4 mb-2; }
+.md h4, .md h5, .md h6 { @apply font-semibold mt-3 mb-1; }
+.md p { @apply my-2; }
+.md ul { @apply list-disc pl-6 my-2; }
+.md ol { @apply list-decimal pl-6 my-2; }
+.md li { @apply my-0.5; }
+.md li > ul, .md li > ol { @apply my-0; }
+.md ul.contains-task-list { @apply list-none pl-1; }
+.md .task-list-item input { @apply mr-2 align-middle; }
+.md a { @apply text-accent underline underline-offset-2; }
+.md blockquote { @apply border-l-4 border-line pl-3 text-muted my-3; }
+.md code { @apply font-mono text-[13px] bg-raised rounded px-1 py-0.5; }
+.md pre { @apply bg-raised rounded-lg p-3 my-3 overflow-x-auto text-[13px] leading-snug; }
+.md pre code { @apply bg-transparent p-0; }
+.md table { @apply block overflow-x-auto my-3 border-collapse text-sm; }
+.md th, .md td { @apply border border-line px-2 py-1 text-left; }
+.md th { @apply bg-raised font-semibold; }
+.md hr { @apply border-line my-5; }
+.md img { @apply max-w-full rounded-md my-2; }
+
+/* highlight.js tokens, matched to the theme tokens above */
+.md .hljs-keyword, .md .hljs-selector-tag, .md .hljs-built_in { color: #a626a4; }
+.md .hljs-string, .md .hljs-attr-value, .md .hljs-template-string { color: #50a14f; }
+.md .hljs-number, .md .hljs-literal { color: #986801; }
+.md .hljs-comment { color: #a0a1a7; font-style: italic; }
+.md .hljs-title, .md .hljs-function { color: #4078f2; }
+.md .hljs-attr, .md .hljs-property, .md .hljs-variable { color: #e45649; }
+.md .hljs-type, .md .hljs-class { color: #c18401; }
+.dark .md .hljs-keyword, .dark .md .hljs-selector-tag, .dark .md .hljs-built_in { color: #c678dd; }
+.dark .md .hljs-string, .dark .md .hljs-attr-value, .dark .md .hljs-template-string { color: #98c379; }
+.dark .md .hljs-number, .dark .md .hljs-literal { color: #d19a66; }
+.dark .md .hljs-comment { color: #7f848e; }
+.dark .md .hljs-title, .dark .md .hljs-function { color: #61afef; }
+.dark .md .hljs-attr, .dark .md .hljs-property, .dark .md .hljs-variable { color: #e06c75; }
+.dark .md .hljs-type, .dark .md .hljs-class { color: #e5c07b; }
+
+/* CodeMirror sizing */
+.cm-editor {
+  height: 100%;
+  font-size: 13px;
+}
+.cm-editor.cm-focused {
+  outline: none;
+}
+.cm-scroller {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  line-height: 1.55 !important;
+}
+.cm-editor .cm-gutters {
+  background: rgb(var(--surface));
+  border-right: 1px solid rgb(var(--line));
+  color: rgb(var(--muted));
+}
+.cm-editor .cm-panels {
+  background: rgb(var(--raised));
+  color: rgb(var(--fg));
+}
+.cm-editor .cm-panels input,
+.cm-editor .cm-panels button {
+  font-size: 16px;
+}

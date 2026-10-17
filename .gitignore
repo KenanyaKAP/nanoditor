@@ -1,0 +1,9 @@
+.env
+data/
+node_modules/
+frontend/dist/
+backend/web/dist/*
+!backend/web/dist/.gitkeep
+.e2e-sandbox/
+*.log
+.playwright-mcp/

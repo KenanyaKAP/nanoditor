@@ -1,0 +1,40 @@
+services:
+  kennycode:
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+    image: kennycode:latest
+    container_name: kennycode
+    restart: unless-stopped
+    user: "1000:1000"
+    env_file: .env
+    # Host networking, not a port mapping: Docker's proxy rewrites the source
+    # IP of traffic arriving over Tailscale to the bridge gateway, which breaks
+    # the Tailscale WhoIs check. On the host network the app sees real peers.
+    network_mode: host
+    environment:
+      HOME: /home/ken
+      # Listens on 0.0.0.0; every request must pass the Tailscale WhoIs check.
+      LISTEN_ADDR: ":${PORT:-7777}"
+      # Inside the /home/ken mount, so deletes can be renamed into the trash.
+      DATA_DIR: /home/ken/Documents/KennyCode/data
+      TAILSCALE_SOCKET: /var/run/tailscale/tailscaled.sock
+    volumes:
+      # Same path inside and out, so ~/.gitconfig, ~/.ssh and file paths match the host.
+      - /home/ken:/home/ken
+      # Other disks (e.g. /mnt/windows). rslave so drives mounted after the
+      # container starts still show up inside it.
+      - type: bind
+        source: /mnt
+        target: /mnt
+        bind:
+          propagation: rslave
+      # The directory, not the socket file: tailscaled recreates the socket on
+      # restart, and a file bind mount would keep pointing at the dead one.
+      - /var/run/tailscale:/var/run/tailscale:ro
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/kennycode", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
