@@ -1,29 +1,67 @@
 package notes
 
 import (
+	"context"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
+
+	"nanoditor/internal/fsapi"
+	"nanoditor/internal/pathsafe"
 )
 
-func TestDetectVaults(t *testing.T) {
+func TestResolve(t *testing.T) {
 	root := t.TempDir()
-	for _, d := range []string{
-		"ProjectA/docs/.obsidian",
-		"ProjectB/.obsidian",
-		"ProjectB/inner/.obsidian", // inside a vault: not reported separately
-		"ProjectC/node_modules/x/.obsidian",
-		"deep/1/2/3/.obsidian",
+	for _, f := range []string{
+		"proj/vault/.obsidian/app.json",
+		"proj/vault/Ideas.md",
+		"proj/vault/deep/Plan.md",
+		"proj/vault/Board.base",
+		"proj/vault/v1.2 notes.md",
+		"proj/other/Plan.md",
+		"proj/node_modules/x/Hidden.md",
+		"proj/README.md",
 	} {
-		if err := os.MkdirAll(filepath.Join(root, d), 0o755); err != nil {
+		p := filepath.Join(root, f)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("# x\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	got := DetectVaults(root, 3)
-	want := []string{filepath.Join(root, "ProjectA/docs"), filepath.Join(root, "ProjectB")}
-	slices.Sort(got)
-	if !slices.Equal(got, want) {
-		t.Errorf("DetectVaults = %v, want %v", got, want)
+	box, err := pathsafe.New([]string{root}, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &Service{FS: &fsapi.Service{Box: box}}
+	real := func(p string) string { r, _ := filepath.EvalSymlinks(filepath.Join(root, p)); return r }
+	ws := real("proj")
+
+	// A note in an Obsidian vault resolves inside that vault only.
+	if got := s.LinkRoot(real("proj/vault/Ideas.md"), ws); got != real("proj/vault") {
+		t.Errorf("LinkRoot in vault = %s", got)
+	}
+	// Elsewhere in the workspace, the workspace is the root.
+	if got := s.LinkRoot(real("proj/README.md"), ws); got != ws {
+		t.Errorf("LinkRoot in workspace = %s", got)
+	}
+
+	for _, c := range []struct{ root, name, want string }{
+		{"proj/vault", "Plan", "proj/vault/deep/Plan.md"},
+		{"proj/vault", "deep/Plan|alias", "proj/vault/deep/Plan.md"},
+		{"proj", "ideas#Heading", "proj/vault/Ideas.md"},
+		{"proj/vault", "Board.base#View", "proj/vault/Board.base"},
+		{"proj/vault", "v1.2 notes", "proj/vault/v1.2 notes.md"},
+		{"proj", "Hidden", ""}, // node_modules is skipped
+	} {
+		got, err := s.Resolve(context.Background(), real(c.root), c.name)
+		want := ""
+		if c.want != "" {
+			want = real(c.want)
+		}
+		if got != want || (want != "" && err != nil) {
+			t.Errorf("Resolve(%s, %q) = %q, %v; want %q", c.root, c.name, got, err, want)
+		}
 	}
 }

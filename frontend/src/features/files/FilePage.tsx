@@ -241,7 +241,7 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
                   }}
                   onWikiLink={async (target) => {
                     try {
-                      const r = await api.get<{ path: string }>('/api/notes/resolve', { ws: ws.id ?? undefined, name: target })
+                      const r = await api.get<{ path: string }>('/api/notes/resolve', { from: path, root: workspace ?? undefined, name: target })
                       await flush()
                       navigate(openPath(r.path))
                     } catch {

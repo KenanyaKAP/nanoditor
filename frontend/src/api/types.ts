@@ -19,9 +19,6 @@ export interface Settings {
 
 /** Saved per workspace, independently. */
 export interface WorkspaceSettings {
-  vaultPath: string
-  dailyFolder: string
-  inboxFile: string
   scanDepth: number
   showHidden: boolean
 }
@@ -95,14 +92,6 @@ export interface SearchHit {
 export interface SearchResult {
   hits: SearchHit[]
   truncated: boolean
-}
-
-export interface Note {
-  path: string
-  name: string
-  rel: string
-  mtime: number
-  size: number
 }
 
 export interface Branch {

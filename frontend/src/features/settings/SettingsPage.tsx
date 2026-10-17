@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Check, FolderOpen, Gem, Pencil, Trash2, X } from 'lucide-react'
+import { Check, FolderOpen, Pencil, Trash2 } from 'lucide-react'
 import { api } from '../../api/client'
 import { keys, useMe, useSaveSettings, useSettings, useWorkspaces } from '../../api/queries'
 import type { Workspace } from '../../api/types'
@@ -9,8 +8,7 @@ import { TopBar } from '../../components/TopBar'
 import { Page } from '../../components/Shell'
 import { Card, ErrorView, Loading, SectionTitle, Segmented, Toggle } from '../../components/ui'
 import { useDialogs } from '../../components/dialogs'
-import { relative, tildify } from '../../lib/path'
-import { VaultSetup } from '../notes/VaultSetup'
+import { tildify } from '../../lib/path'
 import { setCurrentWorkspace, useWorkspace } from '../workspaces/workspace'
 
 export function SettingsPage() {
@@ -44,7 +42,7 @@ export function SettingsPage() {
               <Link to="/files" className="font-medium text-accent">
                 Open one in Files
               </Link>{' '}
-              to set its vault and git options.
+              to set its options.
             </Card>
           </>
         )}
@@ -93,12 +91,9 @@ function WorkspaceSection({
   home?: string
   update: (patch: Partial<Workspace['settings']>) => Promise<void>
 }) {
-  const { toast, toastError, confirm } = useDialogs()
+  const { toastError } = useDialogs()
   const set = ws.settings
-  const run = (patch: Partial<Workspace['settings']>, msg?: string) =>
-    update(patch)
-      .then(() => msg && toast(msg))
-      .catch(toastError)
+  const run = (patch: Partial<Workspace['settings']>) => update(patch).catch(toastError)
 
   return (
     <>
@@ -112,39 +107,6 @@ function WorkspaceSection({
           </div>
         </div>
 
-        <div className="border-b border-line px-4 py-3">
-          <div className="mb-2 flex items-center gap-2 text-[15px]">
-            <Gem className="h-4 w-4 text-accent" /> Vault
-          </div>
-          {set.vaultPath ? (
-            <div className="mb-3 flex items-center gap-2 rounded-xl bg-raised px-3 py-2.5">
-              <div className="min-w-0 flex-1 truncate font-mono text-sm">
-                {relative(ws.path, set.vaultPath) ?? tildify(set.vaultPath, home)}
-                {relative(ws.path, set.vaultPath) === '' && '(workspace folder)'}
-              </div>
-              <button
-                aria-label="Remove vault"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted active:bg-line"
-                onClick={async () => {
-                  const ok = await confirm({
-                    title: 'Remove vault from this workspace?',
-                    message: 'Notes stay on disk; Files just stops showing the vault here.',
-                    confirmLabel: 'Remove',
-                  })
-                  if (ok) run({ vaultPath: '' })
-                }}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="mb-3 text-sm text-muted">Not set. Choose one to get quick capture, today's note and recent notes at the top of Files.</div>
-          )}
-          <VaultSetup workspace={ws.path} current={set.vaultPath} onPick={(p) => update({ vaultPath: p }).then(() => toast('Vault set'))} />
-        </div>
-
-        <TextRow label="Daily notes folder" value={set.dailyFolder} onSave={(v) => run({ dailyFolder: v }, 'Saved')} />
-        <TextRow label="Inbox file" value={set.inboxFile} onSave={(v) => run({ inboxFile: v }, 'Saved')} />
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2">
           <div>
             <div className="text-[15px]">Git scan depth</div>
@@ -191,7 +153,6 @@ function WorkspaceList({ current, home }: { current: string | null; home?: strin
                 <div className="truncate text-[15px]">{w.name}</div>
                 <div className="truncate text-xs text-muted">
                   {tildify(w.path, home)}
-                  {w.settings.vaultPath ? ' · vault ✓' : ''}
                 </div>
               </div>
             </button>
@@ -230,22 +191,3 @@ function WorkspaceList({ current, home }: { current: string | null; home?: strin
     </>
   )
 }
-
-function TextRow({ label, value, onSave }: { label: string; value: string; onSave: (v: string) => void }) {
-  const [v, setV] = useState(value)
-  useEffect(() => setV(value), [value])
-  return (
-    <label className="flex min-h-[52px] items-center gap-3 border-b border-line px-4">
-      <span className="shrink-0 text-[15px]">{label}</span>
-      <input
-        value={v}
-        onChange={(e) => setV(e.target.value)}
-        onBlur={() => v.trim() && v !== value && onSave(v.trim())}
-        autoCapitalize="off"
-        autoCorrect="off"
-        className="min-w-0 flex-1 bg-transparent text-right font-mono text-sm text-muted outline-none focus:text-fg"
-      />
-    </label>
-  )
-}
-

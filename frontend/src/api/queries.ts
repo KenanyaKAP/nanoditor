@@ -9,7 +9,6 @@ export const keys = {
   recents: (kind?: string) => ['recents', kind ?? ''] as const,
   list: (path: string, hidden?: boolean) => ['fs', 'list', path, !!hidden] as const,
   file: (path: string) => ['fs', 'read', path] as const,
-  notesRecent: (vault: string) => ['notes', 'recent', vault] as const,
   repos: (root: string) => ['git', 'repos', root] as const,
   status: (repo: string) => ['git', 'status', repo] as const,
   diff: (repo: string, path: string, staged: boolean, untracked: boolean) =>
@@ -40,7 +39,6 @@ export function useSaveSettings() {
     onSuccess: (s) => {
       qc.setQueryData(keys.settings, s)
       qc.invalidateQueries({ queryKey: ['git', 'repos'] })
-      qc.invalidateQueries({ queryKey: ['notes'] })
       qc.invalidateQueries({ queryKey: ['fs', 'list'] })
     },
   })

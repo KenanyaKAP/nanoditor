@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronsUpDown, Eye, EyeOff, FilePlus2, FolderOpen, FolderPlus, Gem, MoreVertical, Search } from 'lucide-react'
+import { ChevronsUpDown, Eye, EyeOff, FilePlus2, FolderOpen, FolderPlus, MoreVertical, Search } from 'lucide-react'
 import { TopBar } from '../../components/TopBar'
 import { Button, EmptyState, IconButton } from '../../components/ui'
 import { Sheet, SheetItem } from '../../components/Sheet'
 import { useMe } from '../../api/queries'
 import { basename, relative, tildify } from '../../lib/path'
-import { VaultPanel } from '../notes/VaultPanel'
 import { WorkspaceSheet } from '../workspaces/WorkspaceSheet'
 import { useWorkspace } from '../workspaces/workspace'
 import { DirList } from './DirList'
@@ -28,9 +27,7 @@ export function FilesPage() {
   const hidden = ws.settings?.showHidden ?? false
 
   const path = params.get('path') || workspace
-  // Breadcrumbs start at the workspace, or at the vault when it lives outside it.
-  const inside = (root: string | null) => !!root && !!path && relative(root, path) !== null
-  const base = inside(workspace) ? workspace : inside(ws.vault) ? ws.vault : path
+  const base = workspace && path && relative(workspace, path) !== null ? workspace : path
 
   if (!path || !base) {
     return (
@@ -82,9 +79,6 @@ export function FilesPage() {
         hidden={hidden}
         onOpenDir={go}
         onOpenFile={(e) => navigate(openPath(e.path))}
-        header={
-          path === workspace && ws.vault && ws.id ? <VaultPanel vault={ws.vault} ws={ws.id} workspace={workspace} /> : undefined
-        }
       />
       <WorkspaceSheet open={wsOpen} onClose={() => setWsOpen(false)} />
       <SearchSheet
@@ -133,17 +127,6 @@ export function FilesPage() {
         >
           Switch workspace…
         </SheetItem>
-        {workspace && !ws.vault && !ws.loading && (
-          <SheetItem
-            icon={<Gem className="h-5 w-5" />}
-            onClick={() => {
-              setMenuOpen(false)
-              navigate('/settings')
-            }}
-          >
-            Set up a vault…
-          </SheetItem>
-        )}
         <div className="h-3" />
       </Sheet>
     </>

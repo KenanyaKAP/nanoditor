@@ -52,7 +52,7 @@ const router = createBrowserRouter([
   },
 })
 
-/** Addresses from before Files and Vault merged (old links, remembered last screens). */
+/** Addresses from older versions (Vault tab, separate view/edit pages): old links, remembered last screens. */
 function LegacyRedirect() {
   const { pathname, search } = useLocation()
   const params = new URLSearchParams(search)

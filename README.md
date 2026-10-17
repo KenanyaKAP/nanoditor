@@ -1,6 +1,6 @@
 # Nanoditor
 
-A mobile-first web app for working on your own machine from your phone: browse and edit files, write notes in an Obsidian-style vault, and do day-to-day git work across many repos.
+A mobile-first web app for working on your own machine from your phone: browse, read and edit files (code and Markdown notes alike), and do day-to-day git work across many repos.
 
 It runs in one Docker container (a Go binary with the React app embedded) and is reachable only over [Tailscale](https://tailscale.com). Access is limited to your Tailscale identity. There are no passwords and no database server: app state lives in a SQLite file in `data/`.
 
@@ -28,7 +28,7 @@ The variables in `.env`:
 | `ALLOWED_ROOTS` | Folders the app may read and write (comma-separated). Must be inside `HOST_HOME` or `/mnt` |
 | `PUID`, `PGID` | Your host user and group IDs (`id -u`, `id -g`), so new files are owned by you |
 | `PORT` | Port to listen on (default `7777`) |
-| `TZ` | Timezone for daily notes and capture timestamps, e.g. `Europe/Berlin` |
+| `TZ` | Timezone for commit times and log timestamps, e.g. `Europe/Berlin` |
 | `DEV_TRUST_LOCAL` | Development only: also trust requests from `127.0.0.1` |
 
 ## Use it
@@ -39,15 +39,14 @@ Everything follows the **workspace**, the folder you open in Files (**Open folde
 
 - **Git** lists only the repos inside the workspace: the folder itself if it is a repo, otherwise every repo below it (up to its *scan depth*). Switching workspace switches the list.
 - **Files** opens every file, notes and code alike, in one editor with a tab bar, so you can jump between a note, a config file and an image in one tap. Tabs are kept per workspace on the device.
-- The workspace's **vault** sits at the top of Files: quick capture, today's note, search and recent notes. Set it in Settings → This workspace: detected Obsidian vaults (folders with `.obsidian`) are offered, or pick any folder.
-- **Settings → This workspace** (vault, daily-notes folder, inbox file, git scan depth, dotfiles) is saved **per workspace, independently**. Only the theme is app-wide.
+- **`[[wikilinks]]`** in Markdown work like in Obsidian: a link is looked up in the Obsidian vault that holds the note (the nearest folder with `.obsidian`), otherwise anywhere in the workspace. No setup needed.
+- **Settings → This workspace** (git scan depth, dotfiles) is saved **per workspace, independently**. Only the theme is app-wide.
 
 ## What it does
 
 | Tab | Features |
 |---|---|
 | Files | Workspaces; folder browser with git status badges; tabs for open files (switching saves first); rendered Markdown with `[[wikilinks]]`; syntax-highlighted code (wrap / line numbers); images, PDF, media; read or edit in place with a keyboard toolbar; 2-second autosave; name and content search (ripgrep); new / rename / delete (to trash); copy path or contents |
-| Vault (in Files) | Per-workspace vault; quick capture to `Inbox.md` or today's daily note; today's note; note search; new note; recent notes |
 | Git | Repos inside the open workspace, dirty ones first; changes grouped as staged / unstaged / untracked / conflicts; stage, unstage, discard per file or **per hunk**; commit, amend, commit & push; fetch / pull (ff-only or rebase) / push; branches (switch, create, track remote); stashes; history with commit diffs |
 
 Safety rails:

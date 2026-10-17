@@ -15,7 +15,7 @@ func TestWorkspaceSettingsAreIndependent(t *testing.T) {
 		t.Fatalf("new workspace settings = %+v, want defaults", a.Settings)
 	}
 
-	set := WorkspaceSettings{VaultPath: "/w/a/notes", DailyFolder: "Journal", InboxFile: "In.md", ScanDepth: 5, ShowHidden: true}
+	set := WorkspaceSettings{ScanDepth: 5, ShowHidden: true}
 	if err := s.UpdateWorkspace(a.ID, nil, &set, false); err != nil {
 		t.Fatal(err)
 	}

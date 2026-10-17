@@ -86,7 +86,6 @@ export function useFileDoc(path: string, opts: { autosaveMs?: number } = {}) {
         setConflictEtag(null)
         setSaveState('saved')
         qc.invalidateQueries({ queryKey: ['git'] })
-        qc.invalidateQueries({ queryKey: ['notes'] })
         return true
       } catch (e) {
         if (e instanceof ApiError && e.status === 409) {

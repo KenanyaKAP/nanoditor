@@ -5,11 +5,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
-	"nanoditor/internal/apperr"
 	"nanoditor/internal/gitx"
-	"nanoditor/internal/notes"
 )
 
 func (s *Server) fsList(w http.ResponseWriter, r *http.Request) {
@@ -186,98 +183,26 @@ func (s *Server) invalidateRepoOf(p string) {
 	}
 }
 
-// notesConfig builds the notes config from a workspace's own settings
-// (each workspace has its own vault).
-func (s *Server) notesConfig(wsID string) (notesCfg, error) {
-	ws, err := s.workspaceByID(wsID)
-	if err != nil {
-		return notesCfg{}, err
-	}
-	if ws.Settings.VaultPath == "" {
-		return notesCfg{}, apperr.BadRequest("this workspace has no notes vault yet (see Settings)")
-	}
-	return notesCfg{Root: ws.Settings.VaultPath, DailyFolder: ws.Settings.DailyFolder, InboxFile: ws.Settings.InboxFile}, nil
-}
-
-func (s *Server) notesRecent(w http.ResponseWriter, r *http.Request) {
-	c, err := s.notesConfig(r.URL.Query().Get("ws"))
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	list, err := s.Notes.Recent(r.Context(), c, 30)
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	writeJSON(w, list)
-}
-
-func (s *Server) notesCapture(w http.ResponseWriter, r *http.Request) {
-	var in struct {
-		WS     string `json:"ws"`
-		Text   string `json:"text"`
-		Target string `json:"target"`
-	}
-	if err := decode(r, &in); err != nil {
-		writeErr(w, err)
-		return
-	}
-	c, err := s.notesConfig(in.WS)
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	res, err := s.Notes.Capture(c, in.Target, in.Text, time.Now())
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	s.invalidateRepoOf(res.Path)
-	writeJSON(w, res)
-}
-
-func (s *Server) notesDaily(w http.ResponseWriter, r *http.Request) {
-	var in struct {
-		WS string `json:"ws"`
-	}
-	if err := decode(r, &in); err != nil {
-		writeErr(w, err)
-		return
-	}
-	c, err := s.notesConfig(in.WS)
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	p, err := s.Notes.Daily(c, time.Now())
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	writeJSON(w, map[string]string{"path": p})
-}
-
+// notesResolve finds the note a [[wikilink]] in file `from` points to,
+// searched in its Obsidian vault, else the open workspace (`root`).
 func (s *Server) notesResolve(w http.ResponseWriter, r *http.Request) {
-	c, err := s.notesConfig(r.URL.Query().Get("ws"))
+	q := r.URL.Query()
+	from, err := s.Box.Resolve(q.Get("from"))
 	if err != nil {
 		writeErr(w, err)
 		return
 	}
-	p, err := s.Notes.Resolve(r.Context(), c, r.URL.Query().Get("name"))
+	workspace := ""
+	if q.Get("root") != "" {
+		if workspace, err = s.resolveDir(q.Get("root")); err != nil {
+			writeErr(w, err)
+			return
+		}
+	}
+	p, err := s.Notes.Resolve(r.Context(), s.Notes.LinkRoot(from, workspace), q.Get("name"))
 	if err != nil {
 		writeErr(w, err)
 		return
 	}
 	writeJSON(w, map[string]string{"path": p})
-}
-
-// notesDetect lists folders under root that look like Obsidian vaults.
-func (s *Server) notesDetect(w http.ResponseWriter, r *http.Request) {
-	root, err := s.resolveDir(r.URL.Query().Get("root"))
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	writeJSON(w, notes.DetectVaults(root, 3))
 }

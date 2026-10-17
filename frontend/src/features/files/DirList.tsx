@@ -28,7 +28,7 @@ export function useListing(path: string | null, hidden?: boolean) {
   })
 }
 
-/** Breadcrumb trail relative to a base folder (the workspace or vault). */
+/** Breadcrumb trail relative to a base folder (usually the workspace). */
 export function Breadcrumbs({ base, path, onNavigate }: { base: string; path: string; onNavigate: (p: string) => void }) {
   const rel = relative(base, path)
   let crumbs: { label: string; path: string }[]

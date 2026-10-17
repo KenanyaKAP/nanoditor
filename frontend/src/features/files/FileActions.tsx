@@ -17,7 +17,6 @@ export function useFileOps() {
   const refresh = (dir: string) => {
     qc.invalidateQueries({ queryKey: ['fs', 'list', dir] })
     qc.invalidateQueries({ queryKey: ['git'] })
-    qc.invalidateQueries({ queryKey: ['notes'] })
   }
 
   return {

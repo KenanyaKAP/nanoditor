@@ -54,15 +54,6 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, in)
 }
 
-// cleanRel keeps a vault-relative path from escaping the vault.
-func cleanRel(p, def string) string {
-	p = strings.Trim(filepath.Clean("/"+strings.TrimSpace(p)), "/")
-	if p == "" || p == "." {
-		return def
-	}
-	return p
-}
-
 func (s *Server) resolveDir(p string) (string, error) {
 	real, err := s.Box.Resolve(p)
 	if err != nil {
@@ -144,15 +135,6 @@ func (s *Server) updateWorkspace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) cleanWorkspaceSettings(set *store.WorkspaceSettings) error {
-	if set.VaultPath != "" {
-		p, err := s.resolveDir(set.VaultPath)
-		if err != nil {
-			return err
-		}
-		set.VaultPath = p
-	}
-	set.DailyFolder = cleanRel(set.DailyFolder, "Daily")
-	set.InboxFile = cleanRel(set.InboxFile, "Inbox.md")
 	if set.ScanDepth < 1 || set.ScanDepth > 6 {
 		set.ScanDepth = 3
 	}

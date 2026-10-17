@@ -23,15 +23,12 @@ type Settings struct {
 
 // WorkspaceSettings are saved per workspace, independently of each other.
 type WorkspaceSettings struct {
-	VaultPath   string `json:"vaultPath"`   // "" when the workspace has no notes vault
-	DailyFolder string `json:"dailyFolder"` // relative to the vault
-	InboxFile   string `json:"inboxFile"`   // relative to the vault
-	ScanDepth   int    `json:"scanDepth"`   // how deep to look for git repos
-	ShowHidden  bool   `json:"showHidden"`
+	ScanDepth  int  `json:"scanDepth"` // how deep to look for git repos
+	ShowHidden bool `json:"showHidden"`
 }
 
 func DefaultWorkspaceSettings() WorkspaceSettings {
-	return WorkspaceSettings{DailyFolder: "Daily", InboxFile: "Inbox.md", ScanDepth: 3}
+	return WorkspaceSettings{ScanDepth: 3}
 }
 
 type Workspace struct {

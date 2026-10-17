@@ -9,13 +9,9 @@ import (
 	"nanoditor/internal/apperr"
 	"nanoditor/internal/fsapi"
 	"nanoditor/internal/gitx"
-	"nanoditor/internal/notes"
 )
 
-type (
-	fsEntry  = fsapi.Entry
-	notesCfg = notes.Config
-)
+type fsEntry = fsapi.Entry
 
 // repo validates a repo path from the client: inside the sandbox and the
 // top level of a git work tree.

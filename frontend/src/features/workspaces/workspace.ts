@@ -39,8 +39,8 @@ export async function openWorkspace(path: string) {
 }
 
 /**
- * The open workspace with its server record (name, vault). Git and the vault
- * are scoped to it: Git lists the repos inside its folder, Files shows its vault.
+ * The open workspace with its server record (name, settings). Git is scoped
+ * to it: it lists the repos inside the workspace folder.
  */
 export function useWorkspace() {
   const [path] = useCurrentWorkspace()
@@ -79,9 +79,7 @@ export function useWorkspace() {
     record,
     id: record?.id ?? null,
     settings: record?.settings ?? null,
-    vault: record?.settings.vaultPath || null,
     loading: !!path && (list.isLoading || (!!list.data && !record)),
     updateSettings,
-    setVault: (vaultPath: string) => updateSettings({ vaultPath }),
   }
 }
