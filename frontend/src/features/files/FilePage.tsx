@@ -13,12 +13,14 @@ import {
   ListOrdered,
   MoreVertical,
   Pencil,
+  Save,
   TextCursorInput,
   Trash2,
+  Undo2,
   WrapText,
 } from 'lucide-react'
 import { api, rawUrl } from '../../api/client'
-import { touchRecent, useMe } from '../../api/queries'
+import { touchRecent, useMe, useSettings } from '../../api/queries'
 import { TopBar } from '../../components/TopBar'
 import { Button, ErrorView, IconButton, Loading } from '../../components/ui'
 import { Sheet, SheetItem } from '../../components/Sheet'
@@ -28,6 +30,7 @@ import { useDialogs } from '../../components/dialogs'
 import { CodeEditor } from '../../editor/CodeEditor'
 import { EditorToolbar } from '../../editor/EditorToolbar'
 import { ConflictSheet, DraftBanner, SaveIndicator } from '../../editor/EditorChrome'
+import { moveDraft, removeDraft } from '../../editor/drafts'
 import { useFileDoc } from '../../editor/useFileDoc'
 import { basename, dirname, isMarkdown, relative, tildify } from '../../lib/path'
 import { copyText, fileSize, fullTime, store } from '../../lib/util'
@@ -63,10 +66,12 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
   const me = useMe()
   const ws = useWorkspace()
   const workspace = ws.path
-  const { toast, toastError } = useDialogs()
+  const { toast, toastError, confirm } = useDialogs()
   const ops = useFileOps()
-  // Everything autosaves two seconds after you stop typing.
-  const doc = useFileDoc(path, { autosaveMs: 2000 })
+  // Autosave (Settings → App) saves two seconds after typing stops. Without
+  // it, unsaved edits stay with the tab until you save or discard them.
+  const autosave = useSettings().data?.autosave ?? false
+  const doc = useFileDoc(path, { autosaveMs: autosave ? 2000 : undefined })
   const [mode, setModeState] = useState<'view' | 'edit'>(() => (edit ? 'edit' : modes.get(path) ?? 'view'))
   // A search hit opens Markdown as source, so the line can be shown.
   const [source, setSource] = useState(!!line)
@@ -125,9 +130,9 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
     view.dispatch({ selection: EditorSelection.cursor(view.state.doc.line(l).from), scrollIntoView: true })
   }, [view, line, doc.resetKey])
 
-  /** Save pending edits before leaving this file (tab switch, back, close). */
+  /** With autosave, save pending edits before leaving this file (tab switch, back, close). */
   const flush = async () => {
-    if (doc.dirty && doc.saveState !== 'conflict') {
+    if (autosave && doc.dirty && doc.saveState !== 'conflict') {
       try {
         await doc.save()
       } catch (e) {
@@ -135,6 +140,28 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
       }
     }
   }
+
+  const saveNow = () => {
+    if (doc.dirty)
+      doc
+        .save()
+        .then((ok) => ok && toast('Saved'))
+        .catch(toastError)
+  }
+
+  // Cmd/Ctrl+S with a hardware keyboard.
+  const saveRef = useRef(saveNow)
+  saveRef.current = saveNow
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        saveRef.current()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const dir = dirname(path)
   const rel = workspace ? relative(workspace, dir) : null
@@ -270,10 +297,29 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
                   onView={setView}
                 />
               </div>
-              {editing && focused && <EditorToolbar view={view} mode={md ? 'markdown' : 'code'} onDone={() => setFocused(false)} />}
+              {editing && focused && (
+                <EditorToolbar
+                  view={view}
+                  mode={md ? 'markdown' : 'code'}
+                  onDone={() => setFocused(false)}
+                  onSave={autosave ? undefined : saveNow}
+                  dirty={doc.dirty}
+                />
+              )}
             </>
           )}
         </>
+      )}
+      {!autosave && editable && doc.dirty && !focused && (
+        <Button
+          variant="primary"
+          className="absolute bottom-4 right-4 z-10 shadow-lg"
+          icon={<Save className="h-4 w-4" />}
+          loading={doc.saveState === 'saving'}
+          onClick={saveNow}
+        >
+          Save
+        </Button>
       )}
       <ConflictSheet doc={doc} />
       <Sheet open={menu} onClose={() => setMenu(false)} title={name}>
@@ -286,6 +332,18 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
             }}
           >
             {source ? 'Show rendered' : 'Show source'}
+          </SheetItem>
+        )}
+        {doc.dirty && (
+          <SheetItem
+            icon={<Undo2 className="h-5 w-5" />}
+            onClick={async () => {
+              setMenu(false)
+              const ok = await confirm({ title: 'Discard unsaved changes?', confirmLabel: 'Discard', danger: true })
+              if (ok) doc.reload().catch(toastError)
+            }}
+          >
+            Discard changes
           </SheetItem>
         )}
         {display === 'code' && (
@@ -321,6 +379,7 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
             await flush()
             const p = await ops.rename(path)
             if (p) {
+              moveDraft(path, p)
               renameOpenFile(workspace, path, p)
               navigate(openPath(p), { replace: true })
             }
@@ -359,6 +418,7 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
           onClick={async () => {
             setMenu(false)
             if (await ops.remove(path, false)) {
+              removeDraft(path)
               const next = closeOpenFile(workspace, path)
               navigate(next ? openPath(next) : dirUrl(dir, workspace), { replace: true })
             }

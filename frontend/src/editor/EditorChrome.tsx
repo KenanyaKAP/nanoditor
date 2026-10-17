@@ -58,7 +58,9 @@ export function DraftBanner({ doc }: { doc: Doc }) {
   if (!doc.draft) return null
   return (
     <div className="flex shrink-0 items-center gap-2 border-b border-line bg-warn/10 px-3 py-2 text-sm">
-      <span className="min-w-0 flex-1">Unsaved draft from {relTime(doc.draft.savedAt)}</span>
+      <span className="min-w-0 flex-1">
+        Unsaved edits from {relTime(doc.draft.savedAt)}; the file has changed since.
+      </span>
       <Button size="sm" variant="ghost" onClick={doc.discardDraft}>
         Discard
       </Button>

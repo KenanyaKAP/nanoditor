@@ -7,6 +7,7 @@ import { Sheet, SheetItem } from '../../components/Sheet'
 import { useDialogs } from '../../components/dialogs'
 import { basename, dirname, join, relative } from '../../lib/path'
 import { copyText } from '../../lib/util'
+import { moveDraft, removeDraft } from '../../editor/drafts'
 import { useCurrentWorkspace } from '../workspaces/workspace'
 import { closeOpenFile, openPath, renameOpenFile } from './openFiles'
 
@@ -118,7 +119,10 @@ export function FileActions({ entry, base, onClose }: { entry: Entry | null; bas
         icon={<TextCursorInput className="h-5 w-5" />}
         onClick={run(async () => {
           const p = await ops.rename(entry.path)
-          if (p && entry.type === 'file') renameOpenFile(workspace, entry.path, p)
+          if (p && entry.type === 'file') {
+            moveDraft(entry.path, p)
+            renameOpenFile(workspace, entry.path, p)
+          }
         })}
       >
         Rename
@@ -149,7 +153,10 @@ export function FileActions({ entry, base, onClose }: { entry: Entry | null; bas
         danger
         icon={<Trash2 className="h-5 w-5" />}
         onClick={run(async () => {
-          if ((await ops.remove(entry.path, entry.type === 'dir')) && entry.type === 'file') closeOpenFile(workspace, entry.path)
+          if ((await ops.remove(entry.path, entry.type === 'dir')) && entry.type === 'file') {
+            removeDraft(entry.path)
+            closeOpenFile(workspace, entry.path)
+          }
         })}
       >
         Delete

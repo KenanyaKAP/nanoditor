@@ -18,7 +18,8 @@ type Store struct {
 
 // Settings are app-wide. Everything about a project lives on its Workspace.
 type Settings struct {
-	Theme string `json:"theme"` // system | light | dark
+	Theme    string `json:"theme"`    // system | light | dark
+	Autosave bool   `json:"autosave"` // save edits shortly after typing stops
 }
 
 // WorkspaceSettings are saved per workspace, independently of each other.

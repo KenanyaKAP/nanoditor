@@ -15,6 +15,8 @@ export interface Me {
 /** App-wide settings. Everything project-specific is in WorkspaceSettings. */
 export interface Settings {
   theme: 'system' | 'light' | 'dark'
+  /** Save edits two seconds after typing stops. */
+  autosave: boolean
 }
 
 /** Saved per workspace, independently. */

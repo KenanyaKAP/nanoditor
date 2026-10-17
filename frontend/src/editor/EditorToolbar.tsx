@@ -4,6 +4,7 @@ import { redo, undo, indentMore, indentLess } from '@codemirror/commands'
 import { openSearchPanel } from '@codemirror/search'
 import {
   Bold,
+  Save,
   Code,
   Heading,
   IndentDecrease,
@@ -70,14 +71,33 @@ export function EditorToolbar({
   view,
   mode,
   onDone,
+  onSave,
+  dirty,
 }: {
   view: EditorView | null
   mode: 'markdown' | 'code'
   onDone?: () => void
+  /** Shows a Save button first in the row, under the thumb (manual saving). */
+  onSave?: () => void
+  dirty?: boolean
 }) {
   const actions = [...common, ...(mode === 'markdown' ? mdActions : codeActions)]
   return (
     <div className="flex shrink-0 items-center border-t border-line bg-raised px-safe">
+      {onSave && (
+        <button
+          aria-label="Save"
+          disabled={!dirty}
+          className="flex h-11 shrink-0 items-center gap-1.5 border-r border-line px-3 text-sm font-semibold text-accent active:bg-line disabled:text-muted"
+          onPointerDown={(e) => {
+            e.preventDefault()
+            if (dirty) onSave()
+          }}
+        >
+          <Save className="h-[18px] w-[18px]" />
+          Save
+        </button>
+      )}
       <div className="no-scrollbar flex min-w-0 flex-1 overflow-x-auto">
         {actions.map((a) => (
           <button

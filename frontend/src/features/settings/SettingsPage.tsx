@@ -62,6 +62,20 @@ export function SettingsPage() {
               ]}
             />
           </div>
+          <div className="border-t border-line">
+            <Toggle
+              label={
+                <span className="block py-2">
+                  Autosave
+                  <span className="block text-xs text-muted">
+                    Save 2 seconds after you stop typing. When off, tap Save; unsaved edits stay with their tab.
+                  </span>
+                </span>
+              }
+              checked={s.data.autosave}
+              onChange={(autosave) => save.mutate({ ...s.data, autosave }, { onError: toastError })}
+            />
+          </div>
         </Card>
 
         <SectionTitle>About</SectionTitle>
