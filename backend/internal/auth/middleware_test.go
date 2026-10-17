@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"kennycode/internal/apperr"
+	"nanoditor/internal/apperr"
 )
 
 type fakeWhoIs struct {
@@ -33,7 +33,7 @@ func run(m *Middleware, method, remote string, hdr bool) int {
 	req := httptest.NewRequest(method, "/api/x", nil)
 	req.RemoteAddr = remote
 	if hdr {
-		req.Header.Set("X-KC", "1")
+		req.Header.Set("X-ND", "1")
 	}
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -59,10 +59,10 @@ func TestMiddleware(t *testing.T) {
 		t.Errorf("loopback without dev flag: %d", c)
 	}
 	if c := run(m, "POST", "100.64.1.5:1234", false); c != 403 {
-		t.Errorf("POST without X-KC: %d", c)
+		t.Errorf("POST without X-ND: %d", c)
 	}
 	if c := run(m, "POST", "100.64.1.5:1234", true); c != 200 {
-		t.Errorf("POST with X-KC: %d", c)
+		t.Errorf("POST with X-ND: %d", c)
 	}
 
 	before := f.calls

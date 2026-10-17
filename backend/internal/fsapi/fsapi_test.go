@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"kennycode/internal/apperr"
-	"kennycode/internal/pathsafe"
+	"nanoditor/internal/apperr"
+	"nanoditor/internal/pathsafe"
 )
 
 func newSvc(t *testing.T) (*Service, string) {

@@ -34,8 +34,8 @@ export function FileViewPage() {
   const ops = useFileOps()
   const ws = useWorkspace()
   const [menu, setMenu] = useState(false)
-  const [wrap, setWrap] = useState(() => store.get('kc.view.wrap', true))
-  const [gutter, setGutter] = useState(() => store.get('kc.view.lines', true))
+  const [wrap, setWrap] = useState(() => store.get('nd.view.wrap', true))
+  const [gutter, setGutter] = useState(() => store.get('nd.view.lines', true))
   const [source, setSource] = useState(false)
   const [view, setView] = useState<EditorView | null>(null)
 
@@ -176,7 +176,7 @@ export function FileViewPage() {
           icon={<WrapText className="h-5 w-5" />}
           onClick={() => {
             setWrap(!wrap)
-            store.set('kc.view.wrap', !wrap)
+            store.set('nd.view.wrap', !wrap)
             setMenu(false)
           }}
         >
@@ -186,7 +186,7 @@ export function FileViewPage() {
           icon={<ListOrdered className="h-5 w-5" />}
           onClick={() => {
             setGutter(!gutter)
-            store.set('kc.view.lines', !gutter)
+            store.set('nd.view.lines', !gutter)
             setMenu(false)
           }}
         >

@@ -16,7 +16,7 @@ RUN go mod download
 COPY backend/ ./
 COPY --from=web /src/frontend/dist ./web/dist
 ARG APP_VERSION=dev
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/kennycode ./cmd/kennycode
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/nanoditor ./cmd/nanoditor
 
 # 3. Small runtime with the real git and ssh.
 FROM alpine:3.20
@@ -24,9 +24,9 @@ RUN apk add --no-cache git openssh-client ripgrep ca-certificates tzdata \
  && git config --system safe.directory '*' \
  # ssh refuses to run for a uid without a passwd entry, so mirror the host user.
  && adduser -D -u 1000 -h /home/ken -s /bin/sh ken
-COPY --from=server /out/kennycode /usr/local/bin/kennycode
+COPY --from=server /out/nanoditor /usr/local/bin/nanoditor
 ARG APP_VERSION=dev
 ENV APP_VERSION=${APP_VERSION}
 USER 1000:1000
 EXPOSE 7777
-ENTRYPOINT ["/usr/local/bin/kennycode"]
+ENTRYPOINT ["/usr/local/bin/nanoditor"]

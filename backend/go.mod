@@ -1,4 +1,4 @@
-module kennycode
+module nanoditor
 
 go 1.26.0
 

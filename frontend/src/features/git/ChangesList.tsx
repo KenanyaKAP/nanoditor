@@ -30,7 +30,7 @@ export function ChangesList({ repo, status }: { repo: string; status: Status }) 
       title: n === 1 ? `Discard changes to ${basename(paths[0] ?? untracked[0])}?` : `Discard ${n} files?`,
       message:
         untracked.length > 0
-          ? 'Changes are reverted; untracked files are moved to KennyCode\'s trash folder.'
+          ? 'Changes are reverted; untracked files are moved to Nanoditor\'s trash folder.'
           : 'This reverts the file to its staged/committed version. Uncommitted edits are lost.',
       confirmLabel: 'Discard',
       danger: true,

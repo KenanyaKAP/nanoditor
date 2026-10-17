@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"kennycode/internal/apperr"
+	"nanoditor/internal/apperr"
 )
 
 // SkipDirs are never descended into by searches and repo discovery.

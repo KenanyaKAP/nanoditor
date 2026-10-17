@@ -11,7 +11,7 @@ interface Draft {
   savedAt: number
 }
 
-const draftKey = (path: string) => `kc.draft:${path}`
+const draftKey = (path: string) => `nd.draft:${path}`
 
 export type SaveState = 'idle' | 'saving' | 'saved' | 'conflict' | 'error'
 

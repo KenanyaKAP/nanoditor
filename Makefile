@@ -22,7 +22,7 @@ dev:
 
 dev-api:
 	cd backend && set -a && source ../.env && set +a && \
-	LISTEN_ADDR=:7778 DATA_DIR=$(CURDIR)/data DEV_TRUST_LOCAL=true go run ./cmd/kennycode
+	LISTEN_ADDR=:7778 DATA_DIR=$(CURDIR)/data DEV_TRUST_LOCAL=true go run ./cmd/nanoditor
 
 dev-web:
 	cd frontend && npx vite
@@ -33,7 +33,7 @@ test:
 
 up:
 	APP_VERSION=$(VERSION) docker compose up -d --build
-	@echo "KennyCode: http://$(TS_IP):7777"
+	@echo "Nanoditor: http://$(TS_IP):7777"
 
 down:
 	docker compose down

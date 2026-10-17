@@ -7,7 +7,7 @@ import { store } from '../../lib/util'
 
 // The current workspace is per-device (the phone and a browser on the Mac can
 // have different folders open), so it lives in localStorage.
-const KEY = 'kc.workspace'
+const KEY = 'nd.workspace'
 const listeners = new Set<() => void>()
 
 function read(): string | null {

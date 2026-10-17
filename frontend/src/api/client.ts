@@ -29,7 +29,7 @@ export function qs(params?: Params): string {
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (method !== 'GET') {
-    headers['X-KC'] = '1'
+    headers['X-ND'] = '1'
     headers['Content-Type'] = 'application/json'
   }
   let res: Response

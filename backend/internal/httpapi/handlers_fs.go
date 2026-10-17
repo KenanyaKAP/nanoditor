@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"kennycode/internal/apperr"
-	"kennycode/internal/gitx"
-	"kennycode/internal/notes"
+	"nanoditor/internal/apperr"
+	"nanoditor/internal/gitx"
+	"nanoditor/internal/notes"
 )
 
 func (s *Server) fsList(w http.ResponseWriter, r *http.Request) {

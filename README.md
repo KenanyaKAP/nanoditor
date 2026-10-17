@@ -1,4 +1,4 @@
-# KennyCode
+# Nanoditor
 
 A mobile-first web app for working on `ken-linux` from the iPhone: browse and edit files, write notes in the Obsidian vault, and do day-to-day git work across many repos.
 
@@ -32,7 +32,7 @@ Safety rails:
 ## Security model
 
 - The container uses host networking and listens on `0.0.0.0:7777`. A Docker port mapping would rewrite Tailscale peers' source IPs to the bridge gateway, which breaks the identity check. **Every request** except `/api/healthz` is checked with tailscaled's WhoIs API. The caller must be a tailnet device logged in as an address in `ALLOWED_LOGINS`. LAN and other addresses get 403.
-- Mutating requests also need an `X-KC: 1` header (CSRF guard).
+- Mutating requests also need an `X-ND: 1` header (CSRF guard).
 - All paths are confined to `ALLOWED_ROOTS` (symlinks are resolved first), and writes inside `.git/` are refused.
 - Traffic is plain HTTP inside the WireGuard tunnel. Because it's HTTP, iOS treats the page as a non-secure context, so the app uses a clipboard fallback and has no offline service worker. To get HTTPS later, run `tailscale serve --bg --https=8443 http://127.0.0.1:7777`; no code changes needed.
 
@@ -53,7 +53,7 @@ The container runs as uid 1000 and mounts `/home/ken` at the same path, so `~/.g
 ## Layout
 
 ```
-backend/   Go: cmd/kennycode (main), internal/{auth,pathsafe,fsapi,notes,gitx,store,httpapi}
+backend/   Go: cmd/nanoditor (main), internal/{auth,pathsafe,fsapi,notes,gitx,store,httpapi}
 frontend/  React + Vite + Tailwind + CodeMirror 6
 data/      SQLite db + trash (gitignored)
 ```

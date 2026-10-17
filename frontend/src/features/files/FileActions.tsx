@@ -53,7 +53,7 @@ export function useFileOps() {
     async remove(path: string, isDir: boolean): Promise<boolean> {
       const ok = await confirm({
         title: `Delete ${basename(path)}?`,
-        message: `The ${isDir ? 'folder' : 'file'} is moved to KennyCode's trash folder (data/trash), not erased.`,
+        message: `The ${isDir ? 'folder' : 'file'} is moved to Nanoditor's trash folder (data/trash), not erased.`,
         confirmLabel: 'Delete',
         danger: true,
       })

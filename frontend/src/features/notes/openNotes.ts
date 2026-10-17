@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { store } from '../../lib/util'
 
 // Open note tabs, per vault, like Obsidian's tab bar. Kept on the device.
-const key = (vault: string) => `kc.opennotes:${vault}`
+const key = (vault: string) => `nd.opennotes:${vault}`
 const listeners = new Set<() => void>()
 const cache = new Map<string, string[]>()
 

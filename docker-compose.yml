@@ -1,11 +1,14 @@
+# Fixed project name, so the stack keeps its name whatever this folder is called.
+name: nanoditor
+
 services:
-  kennycode:
+  nanoditor:
     build:
       context: .
       args:
         APP_VERSION: ${APP_VERSION:-dev}
-    image: kennycode:latest
-    container_name: kennycode
+    image: nanoditor:latest
+    container_name: nanoditor
     restart: unless-stopped
     user: "1000:1000"
     env_file: .env
@@ -17,12 +20,13 @@ services:
       HOME: /home/ken
       # Listens on 0.0.0.0; every request must pass the Tailscale WhoIs check.
       LISTEN_ADDR: ":${PORT:-7777}"
-      # Inside the /home/ken mount, so deletes can be renamed into the trash.
-      DATA_DIR: /home/ken/Documents/KennyCode/data
+      # ./data (SQLite + trash), relative so the project folder can be renamed.
+      DATA_DIR: /data
       TAILSCALE_SOCKET: /var/run/tailscale/tailscaled.sock
     volumes:
       # Same path inside and out, so ~/.gitconfig, ~/.ssh and file paths match the host.
       - /home/ken:/home/ken
+      - ./data:/data
       # Other disks (e.g. /mnt/windows). rslave so drives mounted after the
       # container starts still show up inside it.
       - type: bind
@@ -34,7 +38,7 @@ services:
       # restart, and a file bind mount would keep pointing at the dead one.
       - /var/run/tailscale:/var/run/tailscale:ro
     healthcheck:
-      test: ["CMD", "/usr/local/bin/kennycode", "healthcheck"]
+      test: ["CMD", "/usr/local/bin/nanoditor", "healthcheck"]
       interval: 30s
       timeout: 5s
       retries: 3

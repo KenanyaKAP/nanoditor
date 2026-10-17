@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"kennycode/internal/apperr"
-	"kennycode/internal/fsapi"
+	"nanoditor/internal/apperr"
+	"nanoditor/internal/fsapi"
 )
 
 type Service struct {

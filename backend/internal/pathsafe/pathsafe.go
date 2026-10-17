@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"kennycode/internal/apperr"
+	"nanoditor/internal/apperr"
 )
 
 type Sandbox struct {

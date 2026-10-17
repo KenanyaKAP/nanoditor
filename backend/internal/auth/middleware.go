@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"kennycode/internal/apperr"
+	"nanoditor/internal/apperr"
 )
 
 type ctxKey struct{}
@@ -61,8 +61,8 @@ func (m *Middleware) Handler(next http.Handler) http.Handler {
 			m.onDeny(w, err)
 			return
 		}
-		if !safeMethod(r.Method) && r.Header.Get("X-KC") != "1" {
-			m.onDeny(w, apperr.Forbidden("missing X-KC header"))
+		if !safeMethod(r.Method) && r.Header.Get("X-ND") != "1" {
+			m.onDeny(w, apperr.Forbidden("missing X-ND header"))
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, id)))

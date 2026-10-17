@@ -69,7 +69,7 @@ export function DiffPage() {
     if (action === 'discard') {
       const ok = await confirm({
         title: untracked ? `Delete ${basename(path)}?` : `Discard all changes to ${basename(path)}?`,
-        message: untracked ? 'The file is moved to KennyCode\'s trash folder.' : 'Uncommitted edits to this file are lost.',
+        message: untracked ? 'The file is moved to Nanoditor\'s trash folder.' : 'Uncommitted edits to this file are lost.',
         confirmLabel: untracked ? 'Delete' : 'Discard',
         danger: true,
       })

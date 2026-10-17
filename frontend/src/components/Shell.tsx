@@ -42,9 +42,9 @@ function useVisualViewport(): boolean {
 
 function useTheme() {
   const { data } = useSettings()
-  const theme = data?.theme ?? store.get<string>('kc.theme', 'system')
+  const theme = data?.theme ?? store.get<string>('nd.theme', 'system')
   useEffect(() => {
-    store.set('kc.theme', theme)
+    store.set('nd.theme', theme)
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = () => {
       const dark = theme === 'dark' || (theme === 'system' && mq.matches)
@@ -58,7 +58,7 @@ function useTheme() {
 
 // Last screen per tab, per workspace: a repo or note from another workspace
 // must not be resumed after switching.
-const lastKey = (workspace: string | null, tab: string) => `kc.last:${workspace ?? ''}:${tab}`
+const lastKey = (workspace: string | null, tab: string) => `nd.last:${workspace ?? ''}:${tab}`
 
 export function Shell() {
   const keyboard = useVisualViewport()

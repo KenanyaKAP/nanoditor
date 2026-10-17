@@ -74,7 +74,7 @@ export function SettingsPage() {
             </div>
           )}
           <div className="text-muted">
-            {me.data?.identity?.node ? `Device: ${me.data.identity.node} · ` : ''}KennyCode {me.data?.version}
+            {me.data?.identity?.node ? `Device: ${me.data.identity.node} · ` : ''}Nanoditor {me.data?.version}
           </div>
           <div className="mt-1 text-muted">Allowed folders: {me.data?.roots.map((r) => tildify(r, home)).join(', ')}</div>
         </Card>

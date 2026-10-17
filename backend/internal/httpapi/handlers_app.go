@@ -9,9 +9,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"kennycode/internal/apperr"
-	"kennycode/internal/auth"
-	"kennycode/internal/store"
+	"nanoditor/internal/apperr"
+	"nanoditor/internal/auth"
+	"nanoditor/internal/store"
 )
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {

@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"kennycode/internal/apperr"
-	"kennycode/internal/fsapi"
-	"kennycode/internal/gitx"
-	"kennycode/internal/notes"
+	"nanoditor/internal/apperr"
+	"nanoditor/internal/fsapi"
+	"nanoditor/internal/gitx"
+	"nanoditor/internal/notes"
 )
 
 type (

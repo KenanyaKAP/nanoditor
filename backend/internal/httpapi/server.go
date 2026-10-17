@@ -14,14 +14,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"kennycode/internal/apperr"
-	"kennycode/internal/auth"
-	"kennycode/internal/config"
-	"kennycode/internal/fsapi"
-	"kennycode/internal/gitx"
-	"kennycode/internal/notes"
-	"kennycode/internal/pathsafe"
-	"kennycode/internal/store"
+	"nanoditor/internal/apperr"
+	"nanoditor/internal/auth"
+	"nanoditor/internal/config"
+	"nanoditor/internal/fsapi"
+	"nanoditor/internal/gitx"
+	"nanoditor/internal/notes"
+	"nanoditor/internal/pathsafe"
+	"nanoditor/internal/store"
 )
 
 type Server struct {

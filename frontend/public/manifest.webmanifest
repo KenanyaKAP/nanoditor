@@ -1,6 +1,6 @@
 {
-  "name": "KennyCode",
-  "short_name": "KennyCode",
+  "name": "Nanoditor",
+  "short_name": "Nanoditor",
   "description": "Files, notes and git on ken-linux, from the phone.",
   "start_url": "/files",
   "scope": "/",

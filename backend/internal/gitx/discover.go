@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"kennycode/internal/fsapi"
+	"nanoditor/internal/fsapi"
 )
 
 type RepoSummary struct {

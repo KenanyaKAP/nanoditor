@@ -1,4 +1,4 @@
-// Command kennycode serves the KennyCode mobile companion app.
+// Command nanoditor serves the Nanoditor mobile companion app.
 package main
 
 import (
@@ -14,15 +14,15 @@ import (
 	"syscall"
 	"time"
 
-	"kennycode/internal/auth"
-	"kennycode/internal/config"
-	"kennycode/internal/fsapi"
-	"kennycode/internal/gitx"
-	"kennycode/internal/httpapi"
-	"kennycode/internal/notes"
-	"kennycode/internal/pathsafe"
-	"kennycode/internal/store"
-	"kennycode/web"
+	"nanoditor/internal/auth"
+	"nanoditor/internal/config"
+	"nanoditor/internal/fsapi"
+	"nanoditor/internal/gitx"
+	"nanoditor/internal/httpapi"
+	"nanoditor/internal/notes"
+	"nanoditor/internal/pathsafe"
+	"nanoditor/internal/store"
+	"nanoditor/web"
 )
 
 func main() {
@@ -67,7 +67,7 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() {
-		log.Printf("kennycode %s listening on %s (roots %v)", cfg.Version, cfg.ListenAddr, box.Roots())
+		log.Printf("nanoditor %s listening on %s (roots %v)", cfg.Version, cfg.ListenAddr, box.Roots())
 		if err := hs.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)
 		}

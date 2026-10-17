@@ -23,7 +23,7 @@ export function FileEditPage() {
   const doc = useFileDoc(path)
   const [view, setView] = useState<EditorView | null>(null)
   const [focused, setFocused] = useState(false)
-  const wrap = store.get('kc.view.wrap', true)
+  const wrap = store.get('nd.view.wrap', true)
 
   const leave = async () => {
     if (doc.dirty) {

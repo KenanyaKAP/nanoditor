@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"kennycode/internal/apperr"
+	"nanoditor/internal/apperr"
 )
 
 func git(t *testing.T, dir string, args ...string) string {

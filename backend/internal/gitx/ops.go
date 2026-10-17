@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"kennycode/internal/apperr"
+	"nanoditor/internal/apperr"
 )
 
 const maxDiffBytes = 1 << 20

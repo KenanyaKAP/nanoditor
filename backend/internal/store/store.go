@@ -72,7 +72,7 @@ var migrations = []string{
 }
 
 func Open(dataDir string) (*Store, error) {
-	dsn := "file:" + filepath.Join(dataDir, "kennycode.db") + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
+	dsn := "file:" + filepath.Join(dataDir, "nanoditor.db") + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err

@@ -16,8 +16,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"kennycode/internal/apperr"
-	"kennycode/internal/pathsafe"
+	"nanoditor/internal/apperr"
+	"nanoditor/internal/pathsafe"
 )
 
 const MaxTextBytes = 2 << 20 // 2 MiB
@@ -430,7 +430,7 @@ func copyTree(src, dst string) error {
 }
 
 func atomicWrite(path string, data []byte, mode fs.FileMode) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".kc-*")
+	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".nd-*")
 	if err != nil {
 		return err
 	}

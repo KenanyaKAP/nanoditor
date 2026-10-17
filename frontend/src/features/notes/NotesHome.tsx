@@ -94,7 +94,7 @@ function NotesHomeInner({ vault, ws }: { vault: string; ws: number }) {
   const qc = useQueryClient()
   const { toast, toastError } = useDialogs()
   const newNote = useNewNote()
-  const draftKey = `kc.capture:${vault}`
+  const draftKey = `nd.capture:${vault}`
   const [text, setText] = useState(() => store.get(draftKey, ''))
   const [searchOpen, setSearchOpen] = useState(false)
   const [pickFolder, setPickFolder] = useState(false)

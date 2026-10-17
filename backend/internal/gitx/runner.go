@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"kennycode/internal/apperr"
+	"nanoditor/internal/apperr"
 )
 
 type Runner struct {

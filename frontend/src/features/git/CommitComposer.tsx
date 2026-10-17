@@ -20,7 +20,7 @@ export function CommitComposer({
   hasUpstreamOrRemote: boolean
   onOutput: (title: string, text: string) => void
 }) {
-  const draftKey = `kc.commitmsg:${repo}`
+  const draftKey = `nd.commitmsg:${repo}`
   const [msg, setMsg] = useState(() => store.get(draftKey, ''))
   const [amend, setAmend] = useState(false)
   const [busy, setBusy] = useState<false | 'commit' | 'push'>(false)

@@ -22,7 +22,7 @@ func Load() Config {
 	home := env("HOME", "/home/ken")
 	c := Config{
 		ListenAddr:      env("LISTEN_ADDR", ":7777"),
-		DataDir:         env("DATA_DIR", filepath.Join(home, ".local/share/kennycode")),
+		DataDir:         env("DATA_DIR", filepath.Join(home, ".local/share/nanoditor")),
 		Home:            home,
 		AllowedRoots:    list(env("ALLOWED_ROOTS", home)),
 		AllowedLogins:   list(env("ALLOWED_LOGINS", "")),
