@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -197,7 +198,7 @@ func TestCommitLogShowAndUnstageInitial(t *testing.T) {
 	if _, err := svc.Commit(ctx, repo, "", true); err != nil {
 		t.Fatalf("amend --no-edit: %v", err)
 	}
-	log, err := svc.Log(ctx, repo, 10, 0)
+	log, err := svc.Log(ctx, repo, 10, 0, false)
 	if err != nil || len(log) != 1 || log[0].Subject != "first commit" {
 		t.Fatalf("log = %+v %v", log, err)
 	}
@@ -230,5 +231,75 @@ func TestDiscover(t *testing.T) {
 		if !want[g] {
 			t.Errorf("unexpected repo %s", g)
 		}
+	}
+}
+
+func TestLogGraph(t *testing.T) {
+	repo := newRepo(t)
+	svc := &Service{R: &Runner{}}
+	ctx := context.Background()
+	commit := func(msg string) {
+		git(t, repo, "commit", "-q", "--allow-empty", "-m", msg)
+	}
+
+	commit("root")
+	git(t, repo, "remote", "add", "origin", repo)
+	git(t, repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+	git(t, repo, "branch", "-q", "-u", "origin/main")
+	git(t, repo, "switch", "-q", "-c", "feature")
+	commit("feature work")
+	git(t, repo, "switch", "-q", "main")
+	commit("main work")
+	git(t, repo, "merge", "-q", "--no-ff", "-m", "merge feature", "feature")
+	git(t, repo, "tag", "v1")
+	git(t, repo, "switch", "-q", "-c", "side", "HEAD~1")
+	commit("side only")
+	git(t, repo, "switch", "-q", "main")
+
+	cur, err := svc.Log(ctx, repo, 50, 0, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	subjects := func(l []LogCommit) []string {
+		var s []string
+		for _, c := range l {
+			s = append(s, c.Subject)
+		}
+		return s
+	}
+	// Topological: the merge comes before both of its parents.
+	if got := strings.Join(subjects(cur), " | "); got != "merge feature | feature work | main work | root" &&
+		got != "merge feature | main work | feature work | root" {
+		t.Errorf("current log = %s", got)
+	}
+	top := cur[0]
+	if !top.Head || len(top.Parents) != 2 || top.Unpushed != true {
+		t.Errorf("top = %+v", top)
+	}
+	want := []Ref{{Name: "main", Kind: "branch", Current: true}, {Name: "v1", Kind: "tag"}}
+	if len(top.Refs) != 2 || top.Refs[0] != want[0] || top.Refs[1] != want[1] {
+		t.Errorf("top refs = %+v", top.Refs)
+	}
+	root := cur[len(cur)-1]
+	if len(root.Refs) != 1 || root.Refs[0] != (Ref{Name: "origin/main", Kind: "remote", Upstream: true}) || root.Unpushed {
+		t.Errorf("root = %+v", root)
+	}
+
+	all, err := svc.Log(ctx, repo, 50, 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != len(cur)+1 || !slices.Contains(subjects(all), "side only") {
+		t.Errorf("all log = %v", subjects(all))
+	}
+	// Every commit is listed before its parents, which the graph relies on.
+	seen := map[string]bool{}
+	for _, c := range all {
+		for _, p := range c.Parents {
+			if seen[p] {
+				t.Errorf("%q is listed after its parent", c.Subject)
+			}
+		}
+		seen[c.Hash] = true
 	}
 }

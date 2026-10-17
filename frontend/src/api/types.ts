@@ -176,6 +176,28 @@ export interface Commit {
   body?: string
   refs?: string[]
   parents?: string[]
+}
+
+/** A branch or tag pointing at a commit in the history graph. */
+export interface Ref {
+  name: string
+  kind: 'branch' | 'remote' | 'tag'
+  current?: boolean
+  /** The checked-out branch's upstream. */
+  upstream?: boolean
+}
+
+/** One row of the history graph (git log in topological order). */
+export interface LogCommit {
+  hash: string
+  short: string
+  author: string
+  time: number
+  subject: string
+  parents: string[]
+  refs?: Ref[]
+  /** HEAD points here. */
+  head?: boolean
   unpushed?: boolean
 }
 

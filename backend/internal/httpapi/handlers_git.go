@@ -297,7 +297,7 @@ func (s *Server) gitLog(w http.ResponseWriter, r *http.Request) {
 		limit = 50
 	}
 	skip, _ := strconv.Atoi(q.Get("skip"))
-	commits, err := s.Git.Log(r.Context(), repo, limit, max(skip, 0))
+	commits, err := s.Git.Log(r.Context(), repo, limit, max(skip, 0), q.Get("all") == "1")
 	if err != nil {
 		writeErr(w, err)
 		return

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronUp, History, Loader2 } from 'lucide-react'
 import { api } from '../../api/client'
 import { keys } from '../../api/queries'
-import type { Commit, CommitResponse } from '../../api/types'
+import type { Commit, CommitResponse, LogCommit } from '../../api/types'
 import { Sheet, SheetItem } from '../../components/Sheet'
 import { useDialogs } from '../../components/dialogs'
 import { cx, store } from '../../lib/util'
@@ -44,7 +44,7 @@ export function CommitComposer({
   useEffect(() => {
     if (!amend || msg.trim()) return
     api
-      .get<Commit[]>('/api/git/log', { repo, limit: 1 })
+      .get<LogCommit[]>('/api/git/log', { repo, limit: 1 })
       .then((c) => c[0] && api.get<Commit>('/api/git/show', { repo, rev: c[0].hash }))
       .then((c) => c && setMsg(c.body ? `${c.subject}\n\n${c.body}` : c.subject))
       .catch(() => {})

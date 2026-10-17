@@ -13,7 +13,7 @@ export const keys = {
   status: (repo: string) => ['git', 'status', repo] as const,
   diff: (repo: string, path: string, staged: boolean, untracked: boolean) =>
     ['git', 'diff', repo, path, staged, untracked] as const,
-  log: (repo: string) => ['git', 'log', repo] as const,
+  log: (repo: string, all: boolean) => ['git', 'log', repo, all] as const,
   show: (repo: string, rev: string) => ['git', 'show', repo, rev] as const,
   branches: (repo: string) => ['git', 'branches', repo] as const,
   stash: (repo: string) => ['git', 'stash', repo] as const,

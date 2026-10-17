@@ -224,27 +224,63 @@ func (s *Service) remote(ctx context.Context, repo string, args ...string) (*Rem
 }
 
 type Commit struct {
-	Hash      string   `json:"hash"`
-	Short     string   `json:"short"`
-	Author    string   `json:"author"`
-	Email     string   `json:"email"`
-	Time      int64    `json:"time"`
-	Subject   string   `json:"subject"`
-	Body      string   `json:"body,omitempty"`
-	Refs      []string `json:"refs,omitempty"`
-	Parents   []string `json:"parents,omitempty"`
-	Unpushed  bool     `json:"unpushed,omitempty"`
+	Hash    string   `json:"hash"`
+	Short   string   `json:"short"`
+	Author  string   `json:"author"`
+	Email   string   `json:"email"`
+	Time    int64    `json:"time"`
+	Subject string   `json:"subject"`
+	Body    string   `json:"body,omitempty"`
+	Refs    []string `json:"refs,omitempty"`
+	Parents []string `json:"parents,omitempty"`
 }
 
-const logFormat = "%H%x1f%h%x1f%an%x1f%ae%x1f%ct%x1f%s%x1f%D%x1f%P%x1e"
+// Ref is a branch or tag pointing at a commit in the history graph.
+type Ref struct {
+	Name     string `json:"name"` // main, origin/main, v1.0
+	Kind     string `json:"kind"` // branch | remote | tag
+	Current  bool   `json:"current,omitempty"`
+	Upstream bool   `json:"upstream,omitempty"` // the current branch's upstream
+}
 
-func (s *Service) Log(ctx context.Context, repo string, limit, skip int) ([]Commit, error) {
-	out := []Commit{}
+// LogCommit is one row of the history graph.
+type LogCommit struct {
+	Hash     string   `json:"hash"`
+	Short    string   `json:"short"`
+	Author   string   `json:"author"`
+	Time     int64    `json:"time"`
+	Subject  string   `json:"subject"`
+	Parents  []string `json:"parents"`
+	Refs     []Ref    `json:"refs,omitempty"`
+	Head     bool     `json:"head,omitempty"` // HEAD points here
+	Unpushed bool     `json:"unpushed,omitempty"`
+}
+
+const logFormat = "%H%x1f%h%x1f%an%x1f%ct%x1f%s%x1f%D%x1f%P%x1e"
+
+// Log lists commits newest first in topological order (children before
+// parents), so the client can draw the branch graph. With all it covers every
+// branch, remote and tag; otherwise the current branch and its upstream.
+func (s *Service) Log(ctx context.Context, repo string, limit, skip int, all bool) ([]LogCommit, error) {
+	out := []LogCommit{}
 	if !s.hasHead(ctx, repo) {
 		return out, nil
 	}
-	res, err := s.R.run(ctx, repo, runOpts{}, "log", "--format="+logFormat,
-		"-n", strconv.Itoa(limit), "--skip", strconv.Itoa(skip))
+	upstream := ""
+	if r, err := s.R.run(ctx, repo, runOpts{}, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"); err == nil {
+		upstream = strings.TrimSpace(string(r.Stdout))
+	}
+	args := []string{"log", "--format=" + logFormat, "--decorate=full", "--topo-order",
+		"-n", strconv.Itoa(limit), "--skip", strconv.Itoa(skip)}
+	if all {
+		args = append(args, "--branches", "--remotes", "--tags", "HEAD")
+	} else {
+		args = append(args, "HEAD")
+		if upstream != "" {
+			args = append(args, "@{upstream}")
+		}
+	}
+	res, err := s.R.run(ctx, repo, runOpts{}, append(args, "--")...)
 	if err != nil {
 		return nil, err
 	}
@@ -257,19 +293,44 @@ func (s *Service) Log(ctx context.Context, repo string, limit, skip int) ([]Comm
 	for _, rec := range strings.Split(string(res.Stdout), "\x1e") {
 		rec = strings.TrimLeft(rec, "\n")
 		f := strings.Split(rec, "\x1f")
-		if len(f) < 8 {
+		if len(f) < 7 {
 			continue
 		}
-		c := Commit{Hash: f[0], Short: f[1], Author: f[2], Email: f[3], Subject: f[5]}
-		c.Time, _ = strconv.ParseInt(f[4], 10, 64)
-		if f[6] != "" {
-			c.Refs = strings.Split(f[6], ", ")
-		}
-		c.Parents = strings.Fields(f[7])
+		c := LogCommit{Hash: f[0], Short: f[1], Author: f[2], Subject: f[4], Parents: strings.Fields(f[6])}
+		c.Time, _ = strconv.ParseInt(f[3], 10, 64)
+		c.Refs, c.Head = parseDecorations(f[5], upstream)
 		c.Unpushed = unpushed[c.Hash]
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+// parseDecorations reads a --decorate=full %D list such as
+// "HEAD -> refs/heads/main, refs/remotes/origin/main, tag: refs/tags/v1".
+func parseDecorations(d, upstream string) (refs []Ref, head bool) {
+	if d == "" {
+		return nil, false
+	}
+	for _, part := range strings.Split(d, ", ") {
+		current := false
+		if rest, ok := strings.CutPrefix(part, "HEAD -> "); ok {
+			head, current, part = true, true, rest
+		} else if part == "HEAD" {
+			head = true // detached
+			continue
+		}
+		part = strings.TrimPrefix(part, "tag: ")
+		if name, ok := strings.CutPrefix(part, "refs/heads/"); ok {
+			refs = append(refs, Ref{Name: name, Kind: "branch", Current: current})
+		} else if name, ok := strings.CutPrefix(part, "refs/remotes/"); ok {
+			if !strings.HasSuffix(name, "/HEAD") {
+				refs = append(refs, Ref{Name: name, Kind: "remote", Upstream: name == upstream})
+			}
+		} else if name, ok := strings.CutPrefix(part, "refs/tags/"); ok {
+			refs = append(refs, Ref{Name: name, Kind: "tag"})
+		}
+	}
+	return refs, head
 }
 
 type CommitDetail struct {
