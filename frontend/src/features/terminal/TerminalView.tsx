@@ -151,6 +151,75 @@ export const TerminalView = forwardRef<
       blur: () => term.blur(),
     }
 
+    // xterm 6 has no touch scrolling, so finger drags are handled here: the
+    // scrollback follows the finger line by line, with a glide after a flick.
+    // Full-screen programs get arrow keys, or wheel events if they use the mouse.
+    const el = host.current!
+    let startY = 0
+    let lastY = 0
+    let lastT = 0
+    let velocity = 0
+    let dragging = false
+    let carry = 0
+    let glide = 0
+    const scrollBy = (dy: number) => {
+      const screen = el.querySelector('.xterm-screen')
+      // Programs that asked for the mouse get wheel events, as from a mouse.
+      if (term.modes.mouseTrackingMode !== 'none') {
+        screen?.dispatchEvent(new WheelEvent('wheel', { deltaY: dy, deltaMode: 0, bubbles: true, cancelable: true }))
+        return
+      }
+      carry += dy / ((screen?.clientHeight ?? 0) / term.rows || 17)
+      const lines = Math.trunc(carry)
+      if (!lines) return
+      carry -= lines
+      if (term.buffer.active.type === 'alternate') {
+        // Full-screen programs (less, man, vim) have no scrollback: one arrow
+        // key per line the finger moved.
+        send(((term.modes.applicationCursorKeysMode ? '\x1bO' : '\x1b[') + (lines > 0 ? 'B' : 'A')).repeat(Math.abs(lines)))
+      } else {
+        term.scrollLines(lines)
+      }
+    }
+    const onTouchStart = (e: TouchEvent) => {
+      cancelAnimationFrame(glide)
+      if (e.touches.length !== 1) return
+      startY = lastY = e.touches[0].clientY
+      lastT = performance.now()
+      velocity = 0
+      dragging = false
+      carry = 0
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return
+      const y = e.touches[0].clientY
+      // A small wobble is still a tap (which focuses the terminal).
+      if (!dragging && Math.abs(y - startY) < 8) return
+      dragging = true
+      e.preventDefault()
+      const now = performance.now()
+      const dy = lastY - y
+      velocity = 0.8 * (dy / Math.max(now - lastT, 1)) + 0.2 * velocity
+      lastY = y
+      lastT = now
+      scrollBy(dy)
+    }
+    const onTouchEnd = () => {
+      if (!dragging || performance.now() - lastT > 100) return
+      let v = velocity * 16 // px per frame
+      const step = () => {
+        v *= 0.95
+        if (Math.abs(v) < 0.5) return
+        scrollBy(v)
+        glide = requestAnimationFrame(step)
+      }
+      glide = requestAnimationFrame(step)
+    }
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEnd)
+    el.addEventListener('touchcancel', onTouchEnd)
+
     // Refit when the keyboard opens or the phone rotates.
     let frame = 0
     const ro = new ResizeObserver(() => {
@@ -174,6 +243,11 @@ export const TerminalView = forwardRef<
       disposed = true
       window.clearTimeout(timer)
       cancelAnimationFrame(frame)
+      cancelAnimationFrame(glide)
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchEnd)
       document.removeEventListener('visibilitychange', onVisible)
       ta?.removeEventListener('focus', onFocus)
       ta?.removeEventListener('blur', onBlur)
@@ -185,5 +259,5 @@ export const TerminalView = forwardRef<
     }
   }, [id, ctrl])
 
-  return <div ref={host} className="h-full w-full" />
+  return <div ref={host} className="h-full w-full touch-none" />
 })
