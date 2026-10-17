@@ -85,6 +85,8 @@ export function CodeEditor({
   useEffect(() => {
     const c = comps.current
     const extensions: Extension[] = [
+      // Cmd+D (select next match) adds cursors instead of moving the one.
+      EditorState.allowMultipleSelections.of(true),
       history(),
       drawSelection(),
       indentOnInput(),

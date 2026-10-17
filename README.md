@@ -46,7 +46,7 @@ Everything follows the **workspace**, the folder you open in Files (**Open folde
 
 | Tab | Features |
 |---|---|
-| Files | Workspaces; folder browser with git status badges; tabs for open files (switching saves first); rendered Markdown with `[[wikilinks]]`; syntax-highlighted code (wrap / line numbers); images, PDF, media; read or edit in place with a keyboard toolbar; Save button within thumb reach (and ⌘S), optional autosave (Settings → App); unsaved edits stay with their tab until saved or discarded; name and content search (ripgrep); new / rename / delete (to trash); copy path or contents |
+| Files | Workspaces; folder browser with git status badges; tabs for open files (switching saves first); rendered Markdown with `[[wikilinks]]`; syntax-highlighted code (wrap / line numbers); images, PDF, media; read or edit in place with a keyboard toolbar (arrow keys with Shift to select, select next match like ⌘D); Save button within thumb reach (and ⌘S), optional autosave (Settings → App); unsaved edits stay with their tab until saved or discarded; name and content search (ripgrep); new / rename / delete (to trash); copy path or contents |
 | Git | Repos inside the open workspace, dirty ones first; changes grouped as staged / unstaged / untracked / conflicts; stage, unstage, discard per file or **per hunk**; commit, amend, commit & push; fetch / pull (ff-only or rebase) / push; branches (switch, create, track remote); stashes; history with commit diffs |
 
 Safety rails:

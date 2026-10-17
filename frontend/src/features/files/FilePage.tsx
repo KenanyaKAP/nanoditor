@@ -70,13 +70,17 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
   const ops = useFileOps()
   // Autosave (Settings → App) saves two seconds after typing stops. Without
   // it, unsaved edits stay with the tab until you save or discard them.
-  const autosave = useSettings().data?.autosave ?? false
+  const settings = useSettings().data
+  const autosave = settings?.autosave ?? false
   const doc = useFileDoc(path, { autosaveMs: autosave ? 2000 : undefined })
   const [mode, setModeState] = useState<'view' | 'edit'>(() => (edit ? 'edit' : modes.get(path) ?? 'view'))
   // A search hit opens Markdown as source, so the line can be shown.
   const [source, setSource] = useState(!!line)
   const [wrap, setWrap] = useState(() => store.get('nd.view.wrap', true))
-  const [gutter, setGutter] = useState(() => store.get('nd.view.lines', true))
+  // Line numbers are remembered on this device, separately for Markdown
+  // (off by default) and code (on by default).
+  const gutterKey = isMarkdown(path) ? 'nd.view.mdLines' : 'nd.view.lines'
+  const [gutter, setGutter] = useState(() => store.get(gutterKey, !isMarkdown(path)))
   const [view, setView] = useState<EditorView | null>(null)
   const [focused, setFocused] = useState(false)
   const [menu, setMenu] = useState(false)
@@ -293,7 +297,7 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
                   resetKey={doc.resetKey}
                   readOnly={!editing}
                   wrap={wrap}
-                  showLineNumbers={md && editing ? false : gutter}
+                  showLineNumbers={gutter}
                   onView={setView}
                 />
               </div>
@@ -358,19 +362,20 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
             >
               {wrap ? 'Turn off line wrap' : 'Wrap long lines'}
             </SheetItem>
-            {!(md && editing) && (
-              <SheetItem
-                icon={<ListOrdered className="h-5 w-5" />}
-                onClick={() => {
-                  setGutter(!gutter)
-                  store.set('nd.view.lines', !gutter)
-                  setMenu(false)
-                }}
-              >
-                {gutter ? 'Hide line numbers' : 'Show line numbers'}
-              </SheetItem>
-            )}
           </>
+        )}
+        {/* Markdown offers it in preview too; it applies once you edit. */}
+        {(display === 'code' || md) && (
+          <SheetItem
+            icon={<ListOrdered className="h-5 w-5" />}
+            onClick={() => {
+              setGutter(!gutter)
+              store.set(gutterKey, !gutter)
+              setMenu(false)
+            }}
+          >
+            {gutter ? 'Hide line numbers' : 'Show line numbers'}
+          </SheetItem>
         )}
         <SheetItem
           icon={<TextCursorInput className="h-5 w-5" />}
