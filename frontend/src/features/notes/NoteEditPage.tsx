@@ -16,6 +16,7 @@ import { ConflictSheet, DraftBanner, SaveIndicator } from '../../editor/EditorCh
 import { useFileDoc } from '../../editor/useFileDoc'
 import { basename, dirname, isMarkdown, relative } from '../../lib/path'
 import { copyText } from '../../lib/util'
+import { useGoUp } from '../../lib/nav'
 import { useFileOps } from '../files/FileActions'
 import { viewPath } from '../files/FilesPage'
 import { useVaultGate } from './NotesHome'
@@ -36,6 +37,7 @@ export function NoteEditPage() {
 
 function NoteEditor({ path, vault, ws, isNew }: { path: string; vault: string; ws: number; isNew: boolean }) {
   const navigate = useNavigate()
+  const goUp = useGoUp()
   const { toast, toastError } = useDialogs()
   const ops = useFileOps()
   // Notes autosave two seconds after you stop typing.
@@ -88,7 +90,7 @@ function NoteEditor({ path, vault, ws, isNew }: { path: string; vault: string; w
         back
         onBack={async () => {
           await flush()
-          navigate('/notes')
+          goUp('/notes')
         }}
         title={
           <span className="inline-flex items-center gap-2">

@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { TopBar } from '../../components/TopBar'
 import { IconButton } from '../../components/ui'
-import { basename, isMarkdown, relative } from '../../lib/path'
+import { basename, dirname, isMarkdown, relative } from '../../lib/path'
 import { DirList } from '../files/DirList'
 import { viewPath } from '../files/FilesPage'
 import { noteEditPath } from './NoteTabs'
@@ -23,6 +23,7 @@ function NotesBrowseInner({ vault }: { vault: string }) {
     <>
       <TopBar
         back
+        up={path === vault ? '/notes' : '/notes/browse?path=' + encodeURIComponent(dirname(path))}
         title={basename(vault)}
         subtitle={relative(vault, path) || 'Vault'}
         actions={

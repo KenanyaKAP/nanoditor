@@ -19,6 +19,11 @@ import { Page } from '../../components/Shell'
 import { useFileOps } from './FileActions'
 import { useWorkspace } from '../workspaces/workspace'
 
+/** Files-tab URL for a folder (the workspace root is plain /files). */
+export function dirUrl(dir: string, workspace: string | null) {
+  return dir === workspace ? '/files' : '/files?path=' + encodeURIComponent(dir)
+}
+
 export function FileViewPage() {
   const [params] = useSearchParams()
   const path = params.get('path') ?? ''
@@ -64,6 +69,7 @@ export function FileViewPage() {
     <>
       <TopBar
         back
+        up={dirUrl(dirname(path), ws.path)}
         title={f?.name ?? path.split('/').pop()}
         subtitle={tildify(dirname(path), me.data?.home)}
         actions={

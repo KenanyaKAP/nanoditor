@@ -59,6 +59,7 @@ export function RepoView() {
     <>
       <TopBar
         back
+        up="/git"
         title={status.data?.name ?? repo.split('/').pop()}
         subtitle={tildify(repo, me.data?.home)}
         actions={

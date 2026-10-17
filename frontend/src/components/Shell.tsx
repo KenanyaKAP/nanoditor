@@ -3,6 +3,8 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { FolderOpen, GitBranch, NotebookPen, RefreshCw, Settings } from 'lucide-react'
 import { cx, store } from '../lib/util'
 import { useSettings } from '../api/queries'
+import { recordLocation } from '../lib/nav'
+import { useCurrentWorkspace } from '../features/workspaces/workspace'
 
 const tabs = [
   { to: '/files', label: 'Files', icon: FolderOpen },
@@ -54,18 +56,25 @@ function useTheme() {
   }, [theme])
 }
 
-const lastKey = (tab: string) => `kc.last:${tab}`
+// Last screen per tab, per workspace: a repo or note from another workspace
+// must not be resumed after switching.
+const lastKey = (workspace: string | null, tab: string) => `kc.last:${workspace ?? ''}:${tab}`
 
 export function Shell() {
   const keyboard = useVisualViewport()
   useTheme()
   const loc = useLocation()
   const navigate = useNavigate()
+  const [workspace] = useCurrentWorkspace()
 
   // Remember the last screen of each tab, so switching tabs returns there.
   useEffect(() => {
+    recordLocation(loc.pathname + loc.search)
     const tab = tabs.find((t) => loc.pathname.startsWith(t.to))
-    if (tab) store.set(lastKey(tab.to), loc.pathname + loc.search)
+    if (tab) store.set(lastKey(workspace, tab.to), loc.pathname + loc.search)
+    // Only on navigation: a workspace switch alone must not file the old
+    // workspace's screen under the new one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loc])
 
   return (
@@ -88,7 +97,7 @@ export function Shell() {
                   onClick={(e) => {
                     e.preventDefault()
                     // Tapping the active tab goes to its root; otherwise resume.
-                    const last = store.get<string | null>(lastKey(t.to), null)
+                    const last = store.get<string | null>(lastKey(workspace, t.to), null)
                     navigate(active || !last ? t.to : last)
                   }}
                   className={cx(

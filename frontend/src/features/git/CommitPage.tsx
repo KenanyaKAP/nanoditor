@@ -12,6 +12,7 @@ import { useDialogs } from '../../components/dialogs'
 import { basename, dirname } from '../../lib/path'
 import { copyText, fullTime } from '../../lib/util'
 import { DiffBody } from './DiffView'
+import { repoPath } from './gitApi'
 
 export function CommitPage() {
   const [params] = useSearchParams()
@@ -32,6 +33,7 @@ export function CommitPage() {
     <>
       <TopBar
         back
+        up={repoPath(repo, 'history')}
         title={c?.subject ?? rev.slice(0, 7)}
         subtitle={c ? `${c.short} · ${c.author}` : undefined}
         actions={

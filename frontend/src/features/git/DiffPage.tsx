@@ -12,7 +12,8 @@ import { useDialogs } from '../../components/dialogs'
 import { basename, dirname, join } from '../../lib/path'
 import { viewPath } from '../files/FilesPage'
 import { DiffBody } from './DiffView'
-import { diffPath, useGitAction, useStatus, type Section } from './gitApi'
+import { diffPath, repoPath, useGitAction, useStatus, type Section } from './gitApi'
+import { useGoUp } from '../../lib/nav'
 
 const sectionLabel: Record<Section, string> = {
   staged: 'Staged changes',
@@ -29,6 +30,7 @@ export function DiffPage() {
   const staged = section === 'staged'
   const untracked = section === 'untracked'
   const navigate = useNavigate()
+  const goUp = useGoUp()
   const { confirm } = useDialogs()
   const act = useGitAction(repo)
   const status = useStatus(repo)
@@ -51,7 +53,7 @@ export function DiffPage() {
   useEffect(() => {
     if (!status.data || status.isFetching || idx >= 0) return
     if (list.length > 0) navigate(diffPath(repo, list[0], section), { replace: true })
-    else navigate(-1)
+    else goUp(repoPath(repo))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status.data, status.isFetching, idx])
 
@@ -85,6 +87,7 @@ export function DiffPage() {
     <>
       <TopBar
         back
+        up={repoPath(repo)}
         title={basename(path)}
         subtitle={`${sectionLabel[section]}${dirname(path) !== '/' ? ' · ' + dirname(path) : ''}`}
         actions={

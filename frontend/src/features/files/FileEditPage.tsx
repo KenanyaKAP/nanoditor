@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { useGoUp } from '../../lib/nav'
+import { viewPath } from './FilesPage'
 import type { EditorView } from '@codemirror/view'
 import { TopBar } from '../../components/TopBar'
 import { Button, ErrorView, Loading } from '../../components/ui'
@@ -15,7 +17,7 @@ import { store } from '../../lib/util'
 export function FileEditPage() {
   const [params] = useSearchParams()
   const path = params.get('path') ?? ''
-  const navigate = useNavigate()
+  const goUp = useGoUp()
   const me = useMe()
   const { confirm, toast, toastError } = useDialogs()
   const doc = useFileDoc(path)
@@ -32,7 +34,7 @@ export function FileEditPage() {
       })
       if (!ok) return
     }
-    navigate(-1)
+    goUp(viewPath(path))
   }
 
   const file = doc.file

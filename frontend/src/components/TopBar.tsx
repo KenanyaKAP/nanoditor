@@ -1,31 +1,37 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
+import { useGoUp } from '../lib/nav'
 
 export function TopBar({
   title,
   subtitle,
   back,
+  up,
   onBack,
   actions,
   onTitleClick,
 }: {
   title: ReactNode
   subtitle?: ReactNode
-  /** Show a back button (history back, or onBack). */
+  /** Show a back button. */
   back?: boolean
+  /** The screen Back leads to (its logical parent). Without it, history back. */
+  up?: string
+  /** Custom back handler (e.g. to confirm or save first); overrides `up`. */
   onBack?: () => void
   actions?: ReactNode
   onTitleClick?: () => void
 }) {
   const navigate = useNavigate()
+  const goUp = useGoUp()
   return (
     <header className="z-20 shrink-0 border-b border-line bg-bg/95 pt-safe px-safe backdrop-blur">
       <div className="flex h-12 items-center gap-1 px-1">
         {back ? (
           <button
             aria-label="Back"
-            onClick={() => (onBack ? onBack() : navigate(-1))}
+            onClick={() => (onBack ? onBack() : up ? goUp(up) : navigate(-1))}
             className="flex h-11 w-10 shrink-0 items-center justify-center rounded-xl active:bg-raised"
           >
             <ChevronLeft className="h-6 w-6" />
