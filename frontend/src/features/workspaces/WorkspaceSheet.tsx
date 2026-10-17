@@ -10,6 +10,7 @@ import { SectionTitle } from '../../components/ui'
 import { useDialogs } from '../../components/dialogs'
 import { basename, dirname, tildify } from '../../lib/path'
 import { relTime } from '../../lib/util'
+import { openPath } from '../files/openFiles'
 import { FolderPicker } from './FolderPicker'
 import { openWorkspace, useCurrentWorkspace } from './workspace'
 
@@ -63,7 +64,7 @@ export function WorkspaceSheet({ open, onClose }: { open: boolean; onClose: () =
             icon={<Clock className="h-5 w-5" />}
             onClick={() => {
               onClose()
-              navigate('/files/view?path=' + encodeURIComponent(r.path))
+              navigate(openPath(r.path))
             }}
             right={<span className="text-xs text-muted">{relTime(r.openedAt)}</span>}
           >

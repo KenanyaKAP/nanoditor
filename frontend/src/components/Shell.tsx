@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { FolderOpen, GitBranch, NotebookPen, RefreshCw, Settings } from 'lucide-react'
+import { FolderOpen, GitBranch, RefreshCw, Settings } from 'lucide-react'
 import { cx, store } from '../lib/util'
 import { useSettings } from '../api/queries'
 import { recordLocation } from '../lib/nav'
@@ -8,7 +8,6 @@ import { useCurrentWorkspace } from '../features/workspaces/workspace'
 
 const tabs = [
   { to: '/files', label: 'Files', icon: FolderOpen },
-  { to: '/notes', label: 'Notes', icon: NotebookPen },
   { to: '/git', label: 'Git', icon: GitBranch },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -56,7 +55,7 @@ function useTheme() {
   }, [theme])
 }
 
-// Last screen per tab, per workspace: a repo or note from another workspace
+// Last screen per tab, per workspace: a repo or file from another workspace
 // must not be resumed after switching.
 const lastKey = (workspace: string | null, tab: string) => `nd.last:${workspace ?? ''}:${tab}`
 

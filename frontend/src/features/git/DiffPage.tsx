@@ -10,7 +10,7 @@ import { Page } from '../../components/Shell'
 import { Button, ErrorView, IconButton, Loading } from '../../components/ui'
 import { useDialogs } from '../../components/dialogs'
 import { basename, dirname, join } from '../../lib/path'
-import { viewPath } from '../files/FilesPage'
+import { openPath } from '../files/openFiles'
 import { DiffBody } from './DiffView'
 import { diffPath, repoPath, useGitAction, useStatus, type Section } from './gitApi'
 import { useGoUp } from '../../lib/nav'
@@ -113,7 +113,7 @@ export function DiffPage() {
             {untracked ? 'Delete' : 'Discard'}
           </Button>
         )}
-        <IconButton label="Open file" onClick={() => navigate(viewPath(join(repo, path)))}>
+        <IconButton label="Open file" onClick={() => navigate(openPath(join(repo, path)))}>
           <FileText className="h-5 w-5" />
         </IconButton>
         {staged ? (

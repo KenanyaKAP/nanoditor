@@ -6,7 +6,7 @@ import { Sheet, SheetItem } from '../../components/Sheet'
 import { useDialogs } from '../../components/dialogs'
 import { basename, dirname, join } from '../../lib/path'
 import { copyText, cx } from '../../lib/util'
-import { viewPath } from '../files/FilesPage'
+import { openPath } from '../files/openFiles'
 import { diffPath, letterFor, statusColor, useGitAction, type Section } from './gitApi'
 
 const titles: Record<Section, string> = {
@@ -153,7 +153,7 @@ export function ChangesList({ repo, status }: { repo: string; status: Status }) 
               icon={<FileText className="h-5 w-5" />}
               onClick={() => {
                 setMenu(null)
-                navigate(viewPath(join(repo, menu.f.path)))
+                navigate(openPath(join(repo, menu.f.path)))
               }}
             >
               Open file

@@ -1,15 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createBrowserRouter, Navigate, RouterProvider, useRouteError } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider, useLocation, useRouteError } from 'react-router-dom'
 import { ApiError } from './api/client'
 import { DialogProvider } from './components/dialogs'
 import { Shell } from './components/Shell'
 import { ErrorView } from './components/ui'
 import { FilesPage } from './features/files/FilesPage'
-import { FileViewPage } from './features/files/FileViewPage'
-import { FileEditPage } from './features/files/FileEditPage'
-import { NotesHome } from './features/notes/NotesHome'
-import { NotesBrowse } from './features/notes/NotesBrowse'
-import { NoteEditPage } from './features/notes/NoteEditPage'
+import { FilePage } from './features/files/FilePage'
+import { openPath } from './features/files/openFiles'
 import { RepoList } from './features/git/RepoList'
 import { RepoView } from './features/git/RepoView'
 import { DiffPage } from './features/git/DiffPage'
@@ -33,11 +30,10 @@ const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/files" replace /> },
       { path: '/files', element: <FilesPage /> },
-      { path: '/files/view', element: <FileViewPage /> },
-      { path: '/files/edit', element: <FileEditPage /> },
-      { path: '/notes', element: <NotesHome /> },
-      { path: '/notes/browse', element: <NotesBrowse /> },
-      { path: '/notes/edit', element: <NoteEditPage /> },
+      { path: '/files/open', element: <FilePage /> },
+      { path: '/files/view', element: <LegacyRedirect /> },
+      { path: '/files/edit', element: <LegacyRedirect /> },
+      { path: '/notes/*', element: <LegacyRedirect /> },
       { path: '/git', element: <RepoList /> },
       { path: '/git/repo', element: <RepoView /> },
       { path: '/git/diff', element: <DiffPage /> },
@@ -55,6 +51,17 @@ const router = createBrowserRouter([
     v7_skipActionErrorRevalidation: true,
   },
 })
+
+/** Addresses from before Files and Vault merged (old links, remembered last screens). */
+function LegacyRedirect() {
+  const { pathname, search } = useLocation()
+  const params = new URLSearchParams(search)
+  const path = params.get('path')
+  let to = '/files'
+  if (path && pathname === '/notes/browse') to = '/files?path=' + encodeURIComponent(path)
+  else if (path) to = openPath(path, { edit: pathname === '/files/edit', line: Number(params.get('line') ?? 0) })
+  return <Navigate to={to} replace />
+}
 
 /** Shows what actually broke instead of a generic message. */
 function RouteError() {

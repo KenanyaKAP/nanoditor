@@ -129,14 +129,28 @@ export function useFileDoc(path: string, opts: { autosaveMs?: number } = {}) {
     setDraft(null)
   }, [path])
 
-  // Optional debounced autosave (notes).
+  // Optional debounced autosave.
+  const autosavePending = !!opts.autosaveMs && dirty && saveState !== 'conflict' && saveState !== 'saving' && !draft
   useEffect(() => {
-    if (!opts.autosaveMs || !dirty || saveState === 'conflict' || saveState === 'saving' || draft) return
+    if (!autosavePending) return
     const t = setTimeout(() => {
       save().catch(() => {})
     }, opts.autosaveMs)
     return () => clearTimeout(t)
-  }, [content, dirty, opts.autosaveMs, save, saveState, draft])
+  }, [content, autosavePending, opts.autosaveMs, save])
+
+  // Leaving the screen (e.g. the bottom tab bar) must not drop an edit that
+  // was still waiting for its autosave. The draft covers a failed save.
+  const pendingRef = useRef(autosavePending)
+  pendingRef.current = autosavePending
+  const saveRef = useRef(save)
+  saveRef.current = save
+  useEffect(
+    () => () => {
+      if (pendingRef.current) saveRef.current().catch(() => {})
+    },
+    [],
+  )
 
   return {
     query,

@@ -1,6 +1,6 @@
 # Nanoditor
 
-A mobile-first web app for working on your own machine from your phone: browse and edit files, write notes in an Obsidian vault, and do day-to-day git work across many repos.
+A mobile-first web app for working on your own machine from your phone: browse and edit files, write notes in an Obsidian-style vault, and do day-to-day git work across many repos.
 
 It runs in one Docker container (a Go binary with the React app embedded) and is reachable only over [Tailscale](https://tailscale.com). Access is limited to your Tailscale identity. There are no passwords and no database server: app state lives in a SQLite file in `data/`.
 
@@ -38,15 +38,16 @@ Open `http://<tailscale-ip>:7777` (or `http://<machine-name>:7777` with MagicDNS
 Everything follows the **workspace**, the folder you open in Files (**Open folder…**, like VS Code):
 
 - **Git** lists only the repos inside the workspace: the folder itself if it is a repo, otherwise every repo below it (up to its *scan depth*). Switching workspace switches the list.
-- **Notes** opens the workspace's own **vault**. Set it in Settings → This workspace: detected Obsidian vaults (folders with `.obsidian`) are offered, or pick any folder. Open notes appear as tabs, Obsidian-style.
+- **Files** opens every file, notes and code alike, in one editor with a tab bar, so you can jump between a note, a config file and an image in one tap. Tabs are kept per workspace on the device.
+- The workspace's **vault** sits at the top of Files: quick capture, today's note, search and recent notes. Set it in Settings → This workspace: detected Obsidian vaults (folders with `.obsidian`) are offered, or pick any folder.
 - **Settings → This workspace** (vault, daily-notes folder, inbox file, git scan depth, dotfiles) is saved **per workspace, independently**. Only the theme is app-wide.
 
 ## What it does
 
 | Tab | Features |
 |---|---|
-| Files | Workspaces; folder browser with git status badges; rendered Markdown; syntax-highlighted code (wrap / line numbers); images, PDF, media; editor with a keyboard toolbar; name and content search (ripgrep); new / rename / delete (to trash); copy path or contents |
-| Notes | Per-workspace vault; tabs for open notes (switching saves first); quick capture to `Inbox.md` or today's daily note; recent notes; vault browser; Markdown editor with a formatting toolbar; preview with `[[wikilinks]]`; 2-second autosave; one-tap copy |
+| Files | Workspaces; folder browser with git status badges; tabs for open files (switching saves first); rendered Markdown with `[[wikilinks]]`; syntax-highlighted code (wrap / line numbers); images, PDF, media; read or edit in place with a keyboard toolbar; 2-second autosave; name and content search (ripgrep); new / rename / delete (to trash); copy path or contents |
+| Vault (in Files) | Per-workspace vault; quick capture to `Inbox.md` or today's daily note; today's note; note search; new note; recent notes |
 | Git | Repos inside the open workspace, dirty ones first; changes grouped as staged / unstaged / untracked / conflicts; stage, unstage, discard per file or **per hunk**; commit, amend, commit & push; fetch / pull (ff-only or rebase) / push; branches (switch, create, track remote); stashes; history with commit diffs |
 
 Safety rails:

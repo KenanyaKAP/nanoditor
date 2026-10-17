@@ -7,6 +7,8 @@ import { Sheet, SheetItem } from '../../components/Sheet'
 import { useDialogs } from '../../components/dialogs'
 import { basename, dirname, join, relative } from '../../lib/path'
 import { copyText } from '../../lib/util'
+import { useCurrentWorkspace } from '../workspaces/workspace'
+import { closeOpenFile, openPath, renameOpenFile } from './openFiles'
 
 export function useFileOps() {
   const qc = useQueryClient()
@@ -78,6 +80,7 @@ export function useFileOps() {
 export function FileActions({ entry, base, onClose }: { entry: Entry | null; base: string; onClose: () => void }) {
   const ops = useFileOps()
   const navigate = useNavigate()
+  const [workspace] = useCurrentWorkspace()
   // Load contents up front: iOS only allows clipboard writes synchronously
   // inside the tap, not after awaiting a request.
   const contents = useQuery({
@@ -97,7 +100,7 @@ export function FileActions({ entry, base, onClose }: { entry: Entry | null; bas
       {entry.type === 'file' && (
         <SheetItem
           icon={<Pencil className="h-5 w-5" />}
-          onClick={run(() => navigate('/files/edit?path=' + encodeURIComponent(entry.path)))}
+          onClick={run(() => navigate(openPath(entry.path, { edit: true })))}
         >
           Edit
         </SheetItem>
@@ -112,7 +115,13 @@ export function FileActions({ entry, base, onClose }: { entry: Entry | null; bas
           </SheetItem>
         </>
       )}
-      <SheetItem icon={<TextCursorInput className="h-5 w-5" />} onClick={run(() => ops.rename(entry.path))}>
+      <SheetItem
+        icon={<TextCursorInput className="h-5 w-5" />}
+        onClick={run(async () => {
+          const p = await ops.rename(entry.path)
+          if (p && entry.type === 'file') renameOpenFile(workspace, entry.path, p)
+        })}
+      >
         Rename
       </SheetItem>
       <SheetItem icon={<Copy className="h-5 w-5" />} onClick={run(() => ops.copy(entry.path, 'Path copied'))}>
@@ -137,7 +146,13 @@ export function FileActions({ entry, base, onClose }: { entry: Entry | null; bas
           </a>
         </>
       )}
-      <SheetItem danger icon={<Trash2 className="h-5 w-5" />} onClick={run(() => ops.remove(entry.path, entry.type === 'dir'))}>
+      <SheetItem
+        danger
+        icon={<Trash2 className="h-5 w-5" />}
+        onClick={run(async () => {
+          if ((await ops.remove(entry.path, entry.type === 'dir')) && entry.type === 'file') closeOpenFile(workspace, entry.path)
+        })}
+      >
         Delete
       </SheetItem>
       <div className="h-3" />

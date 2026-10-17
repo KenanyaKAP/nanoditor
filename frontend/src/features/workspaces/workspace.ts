@@ -39,8 +39,8 @@ export async function openWorkspace(path: string) {
 }
 
 /**
- * The open workspace with its server record (name, vault). Git and Notes are
- * scoped to it: Git lists the repos inside its folder, Notes opens its vault.
+ * The open workspace with its server record (name, vault). Git and the vault
+ * are scoped to it: Git lists the repos inside its folder, Files shows its vault.
  */
 export function useWorkspace() {
   const [path] = useCurrentWorkspace()

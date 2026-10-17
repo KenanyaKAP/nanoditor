@@ -28,6 +28,8 @@ export function SettingsPage() {
     <>
       <TopBar title="Settings" subtitle={save.isPending ? 'Saving…' : undefined} />
       <Page>
+        <WorkspaceList current={ws.path} home={home} />
+
         {ws.path ? (
           ws.record ? (
             <WorkspaceSection ws={ws.record} home={home} update={ws.updateSettings} />
@@ -46,8 +48,6 @@ export function SettingsPage() {
             </Card>
           </>
         )}
-
-        <WorkspaceList current={ws.path} home={home} />
 
         <SectionTitle>App</SectionTitle>
         <Card>
@@ -114,7 +114,7 @@ function WorkspaceSection({
 
         <div className="border-b border-line px-4 py-3">
           <div className="mb-2 flex items-center gap-2 text-[15px]">
-            <Gem className="h-4 w-4 text-accent" /> Notes vault
+            <Gem className="h-4 w-4 text-accent" /> Vault
           </div>
           {set.vaultPath ? (
             <div className="mb-3 flex items-center gap-2 rounded-xl bg-raised px-3 py-2.5">
@@ -128,7 +128,7 @@ function WorkspaceSection({
                 onClick={async () => {
                   const ok = await confirm({
                     title: 'Remove vault from this workspace?',
-                    message: 'Notes stay on disk; the Notes tab just stops opening them here.',
+                    message: 'Notes stay on disk; Files just stops showing the vault here.',
                     confirmLabel: 'Remove',
                   })
                   if (ok) run({ vaultPath: '' })
@@ -138,7 +138,7 @@ function WorkspaceSection({
               </button>
             </div>
           ) : (
-            <div className="mb-3 text-sm text-muted">Not set. The Notes tab opens once you choose one.</div>
+            <div className="mb-3 text-sm text-muted">Not set. Choose one to get quick capture, today's note and recent notes at the top of Files.</div>
           )}
           <VaultSetup workspace={ws.path} current={set.vaultPath} onPick={(p) => update({ vaultPath: p }).then(() => toast('Vault set'))} />
         </div>

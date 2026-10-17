@@ -71,6 +71,8 @@ export function CodeEditor({
   const view = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  // Set while the document is replaced from outside, which is not an edit.
+  const resetting = useRef(false)
   const comps = useRef({
     lang: new Compartment(),
     wrap: new Compartment(),
@@ -98,7 +100,7 @@ export function CodeEditor({
       c.theme.of(isDark() ? oneDark : []),
       c.readOnly.of(readOnlyExt(!!readOnly)),
       EditorView.updateListener.of((u) => {
-        if (u.docChanged) onChangeRef.current?.(u.state.doc.toString())
+        if (u.docChanged && !resetting.current) onChangeRef.current?.(u.state.doc.toString())
       }),
       EditorView.contentAttributes.of({ autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false' }),
     ]
@@ -128,7 +130,13 @@ export function CodeEditor({
     const v = view.current
     if (!v) return
     const cur = v.state.doc.toString()
-    if (cur !== value) v.dispatch({ changes: { from: 0, to: cur.length, insert: value } })
+    if (cur === value) return
+    resetting.current = true
+    try {
+      v.dispatch({ changes: { from: 0, to: cur.length, insert: value } })
+    } finally {
+      resetting.current = false
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey])
 
