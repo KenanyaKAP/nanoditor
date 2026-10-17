@@ -23,7 +23,7 @@ const gitColor: Record<string, string> = {
 export function useListing(path: string | null, hidden?: boolean) {
   return useQuery({
     queryKey: ['fs', 'list', path, hidden ?? null],
-    queryFn: () => api.get<ListResponse>('/api/fs/list', { path: path!, git: true, hidden: hidden === undefined ? undefined : hidden ? '1' : '0' }),
+    queryFn: () => api.get<ListResponse>('/api/fs/list', { path: path!, git: true, hidden: !!hidden }),
     enabled: !!path,
   })
 }

@@ -12,20 +12,25 @@ export interface Me {
   roots: string[]
 }
 
+/** App-wide settings. Everything project-specific is in WorkspaceSettings. */
 export interface Settings {
-  notesRoot: string
+  theme: 'system' | 'light' | 'dark'
+}
+
+/** Saved per workspace, independently. */
+export interface WorkspaceSettings {
+  vaultPath: string
   dailyFolder: string
   inboxFile: string
-  gitRoots: string[]
   scanDepth: number
   showHidden: boolean
-  theme: 'system' | 'light' | 'dark'
 }
 
 export interface Workspace {
   id: number
   name: string
   path: string
+  settings: WorkspaceSettings
   createdAt: number
   lastOpenedAt: number
 }

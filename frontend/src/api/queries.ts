@@ -9,8 +9,8 @@ export const keys = {
   recents: (kind?: string) => ['recents', kind ?? ''] as const,
   list: (path: string, hidden?: boolean) => ['fs', 'list', path, !!hidden] as const,
   file: (path: string) => ['fs', 'read', path] as const,
-  notesRecent: ['notes', 'recent'] as const,
-  repos: ['git', 'repos'] as const,
+  notesRecent: (vault: string) => ['notes', 'recent', vault] as const,
+  repos: (root: string) => ['git', 'repos', root] as const,
   status: (repo: string) => ['git', 'status', repo] as const,
   diff: (repo: string, path: string, staged: boolean, untracked: boolean) =>
     ['git', 'diff', repo, path, staged, untracked] as const,

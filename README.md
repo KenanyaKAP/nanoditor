@@ -8,19 +8,19 @@ It runs in one Docker container (a Go binary with the React app embedded). Acces
 
 Open **http://100.64.1.2:7777** (or `http://ken-linux:7777`) on the iPhone with Tailscale connected. Then Safari → Share → **Add to Home Screen** to get a full-screen app icon.
 
-First-time setup, in **Settings**:
+Everything follows the **workspace**, the folder you open in Files (**Open folder…**, like VS Code):
 
-- **Notes folder**: defaults to `~/Documents/ken-linux-vault`.
-- **Git folders**: add the folder that contains your repos. Every repo inside it, up to *scan depth* levels deep, appears in the Git tab.
-- In **Files**, use **Open folder…** to pick a workspace, like VS Code's "Open Folder".
+- **Git** lists only the repos inside the workspace: the folder itself if it is a repo, otherwise every repo below it (up to its *scan depth*). Switching workspace switches the list.
+- **Notes** opens the workspace's own **vault**. Set it in Settings → This workspace: detected Obsidian vaults (folders with `.obsidian`) are offered, or pick any folder. Open notes appear as tabs, Obsidian-style.
+- **Settings → This workspace** (vault, daily-notes folder, inbox file, git scan depth, dotfiles) is saved **per workspace, independently**. Only the theme is app-wide.
 
 ## What it does
 
 | Tab | Features |
 |---|---|
 | Files | Workspaces; folder browser with git status badges; rendered Markdown; syntax-highlighted code (wrap / line numbers); images, PDF, media; editor with a keyboard toolbar; name and content search (ripgrep); new / rename / delete (to trash); copy path or contents |
-| Notes | Quick capture to `Inbox.md` or today's daily note; daily note; recent notes; vault browser; Markdown editor with a formatting toolbar; preview with `[[wikilinks]]`; 2-second autosave; one-tap copy |
-| Git | All repos under your git folders, dirty ones first; changes grouped as staged / unstaged / untracked / conflicts; stage, unstage, discard per file or **per hunk**; commit, amend, commit & push; fetch / pull (ff-only or rebase) / push; branches (switch, create, track remote); stashes; history with commit diffs |
+| Notes | Per-workspace vault; tabs for open notes (switching saves first); quick capture to `Inbox.md` or today's daily note; recent notes; vault browser; Markdown editor with a formatting toolbar; preview with `[[wikilinks]]`; 2-second autosave; one-tap copy |
+| Git | Repos inside the open workspace, dirty ones first; changes grouped as staged / unstaged / untracked / conflicts; stage, unstage, discard per file or **per hunk**; commit, amend, commit & push; fetch / pull (ff-only or rebase) / push; branches (switch, create, track remote); stashes; history with commit diffs |
 
 Safety rails:
 

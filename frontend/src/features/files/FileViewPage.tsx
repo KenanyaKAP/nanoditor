@@ -17,6 +17,7 @@ import { dirname, isMarkdown, tildify } from '../../lib/path'
 import { copyText, fileSize, fullTime, store } from '../../lib/util'
 import { Page } from '../../components/Shell'
 import { useFileOps } from './FileActions'
+import { useWorkspace } from '../workspaces/workspace'
 
 export function FileViewPage() {
   const [params] = useSearchParams()
@@ -26,6 +27,7 @@ export function FileViewPage() {
   const me = useMe()
   const { toast } = useDialogs()
   const ops = useFileOps()
+  const ws = useWorkspace()
   const [menu, setMenu] = useState(false)
   const [wrap, setWrap] = useState(() => store.get('kc.view.wrap', true))
   const [gutter, setGutter] = useState(() => store.get('kc.view.lines', true))
@@ -137,7 +139,7 @@ export function FileViewPage() {
                 onOpenPath={(p) => navigate('/files/view?path=' + encodeURIComponent(p))}
                 onWikiLink={async (name) => {
                   try {
-                    const r = await api.get<{ path: string }>('/api/notes/resolve', { name })
+                    const r = await api.get<{ path: string }>('/api/notes/resolve', { ws: ws.id ?? undefined, name })
                     navigate('/files/view?path=' + encodeURIComponent(r.path))
                   } catch {
                     toast(`No note named "${name}"`, 'error')

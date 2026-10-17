@@ -9,21 +9,47 @@ import { TopBar } from '../../components/TopBar'
 import { Page } from '../../components/Shell'
 import { Button, EmptyState, ErrorView, IconButton, Loading } from '../../components/ui'
 import { cx, relTime } from '../../lib/util'
+import { basename } from '../../lib/path'
+import { useWorkspace } from '../workspaces/workspace'
 import { repoPath } from './gitApi'
 
+type ReposResponse = { root: string; repos: RepoSummary[] }
+
+/** Repos inside the open workspace only; switching workspace switches the list. */
 export function RepoList() {
+  const ws = useWorkspace()
+  if (!ws.path) {
+    return (
+      <>
+        <TopBar title="Git" />
+        <EmptyState
+          icon={<FolderGit2 className="h-10 w-10" />}
+          title="No folder open"
+          body="Open a project folder in Files. Git shows the repos inside it."
+          action={
+            <Link to="/files">
+              <Button variant="primary">Go to Files</Button>
+            </Link>
+          }
+        />
+      </>
+    )
+  }
+  if (!ws.id) return <Loading />
+  return <RepoListInner wsId={ws.id} name={ws.record?.name ?? basename(ws.path)} />
+}
+
+function RepoListInner({ wsId, name }: { wsId: number; name: string }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [filter, setFilter] = useState('')
+  const key = keys.repos(String(wsId))
   const q = useQuery({
-    queryKey: keys.repos,
-    queryFn: () => api.get<{ roots: string[]; repos: RepoSummary[] }>('/api/git/repos'),
+    queryKey: key,
+    queryFn: () => api.get<ReposResponse>('/api/git/repos', { ws: wsId }),
   })
   const refresh = () =>
-    qc.fetchQuery({
-      queryKey: keys.repos,
-      queryFn: () => api.get<{ roots: string[]; repos: RepoSummary[] }>('/api/git/repos', { fresh: true }),
-    })
+    qc.fetchQuery({ queryKey: key, queryFn: () => api.get<ReposResponse>('/api/git/repos', { ws: wsId, fresh: true }) })
 
   const repos = useMemo(() => {
     const f = filter.trim().toLowerCase()
@@ -37,7 +63,7 @@ export function RepoList() {
     <>
       <TopBar
         title="Git"
-        subtitle={q.data ? `${q.data.repos.length} repos · ${dirtyCount} with changes` : undefined}
+        subtitle={q.data ? `${name} · ${q.data.repos.length} repo${q.data.repos.length === 1 ? '' : 's'} · ${dirtyCount} with changes` : name}
         actions={
           <IconButton label="Refresh" onClick={() => refresh()}>
             <RefreshCw className={cx('h-5 w-5', q.isFetching && 'animate-spin')} />
@@ -47,19 +73,7 @@ export function RepoList() {
       <Page onRefresh={refresh}>
         {q.isLoading && <Loading label="Scanning repositories…" />}
         {q.error && <ErrorView error={q.error} onRetry={() => q.refetch()} />}
-        {q.data && q.data.roots.length === 0 && (
-          <EmptyState
-            icon={<FolderGit2 className="h-10 w-10" />}
-            title="No git folders yet"
-            body="Add the folder that holds your repos in Settings. KennyCode finds every repo inside it."
-            action={
-              <Link to="/settings">
-                <Button variant="primary">Open Settings</Button>
-              </Link>
-            }
-          />
-        )}
-        {q.data && q.data.roots.length > 0 && (
+        {q.data && (
           <>
             {q.data.repos.length > 6 && (
               <div className="px-3 pt-3">
@@ -76,7 +90,11 @@ export function RepoList() {
                 </div>
               </div>
             )}
-            {q.data.repos.length === 0 && <EmptyState title="No repositories found" body="Try a larger scan depth in Settings." />}
+            {q.data.repos.length === 0 && <EmptyState
+                icon={<FolderGit2 className="h-10 w-10" />}
+                title="No git repos in this folder"
+                body="Repos deeper inside? Raise the scan depth in Settings."
+              />}
             <ul className="py-2">
               {repos.map((r) => (
                 <RepoRow key={r.path} r={r} onOpen={() => navigate(repoPath(r.path))} />

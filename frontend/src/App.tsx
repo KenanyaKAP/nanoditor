@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider, useRouteError } from 'react-router-dom'
 import { ApiError } from './api/client'
 import { DialogProvider } from './components/dialogs'
 import { Shell } from './components/Shell'
@@ -29,7 +29,7 @@ const queryClient = new QueryClient({
 const router = createBrowserRouter([
   {
     element: <Shell />,
-    errorElement: <ErrorView error={new Error('Something went wrong')} onRetry={() => location.reload()} />,
+    errorElement: <RouteError />,
     children: [
       { path: '/', element: <Navigate to="/files" replace /> },
       { path: '/files', element: <FilesPage /> },
@@ -55,6 +55,13 @@ const router = createBrowserRouter([
     v7_skipActionErrorRevalidation: true,
   },
 })
+
+/** Shows what actually broke instead of a generic message. */
+function RouteError() {
+  const err = useRouteError()
+  const e = err instanceof Error ? err : new Error(String((err as any)?.statusText ?? err ?? 'Something went wrong'))
+  return <ErrorView error={e} onRetry={() => location.reload()} />
+}
 
 export function App() {
   return (

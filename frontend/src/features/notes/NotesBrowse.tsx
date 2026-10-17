@@ -1,27 +1,30 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
-import { useSettings } from '../../api/queries'
 import { TopBar } from '../../components/TopBar'
-import { IconButton, Loading } from '../../components/ui'
-import { isMarkdown } from '../../lib/path'
+import { IconButton } from '../../components/ui'
+import { basename, isMarkdown, relative } from '../../lib/path'
 import { DirList } from '../files/DirList'
 import { viewPath } from '../files/FilesPage'
-import { noteEditPath, useNewNote } from './NotesHome'
+import { noteEditPath } from './NoteTabs'
+import { useNewNote, useVaultGate } from './NotesHome'
 
 export function NotesBrowse() {
-  const settings = useSettings()
+  const gate = useVaultGate()
+  if ('gate' in gate) return gate.gate
+  return <NotesBrowseInner vault={gate.vault} />
+}
+
+function NotesBrowseInner({ vault }: { vault: string }) {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const newNote = useNewNote()
-  const root = settings.data?.notesRoot ?? ''
-  const path = params.get('path') || root
-  if (!root) return <Loading />
+  const path = params.get('path') || vault
   return (
     <>
       <TopBar
         back
-        title="Vault"
-        subtitle={path === root ? root.split('/').pop() : path.slice(root.length + 1)}
+        title={basename(vault)}
+        subtitle={relative(vault, path) || 'Vault'}
         actions={
           <IconButton
             label="New note here"
@@ -36,7 +39,7 @@ export function NotesBrowse() {
       />
       <DirList
         path={path}
-        base={root}
+        base={vault}
         onOpenDir={(p) => setParams({ path: p }, { replace: true })}
         onOpenFile={(e) => navigate(isMarkdown(e.path) ? noteEditPath(e.path) : viewPath(e.path))}
       />

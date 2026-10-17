@@ -1,24 +1,23 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarDays, FileText, FolderTree, Inbox, NotebookPen, Plus, Search, Send } from 'lucide-react'
+import { CalendarDays, FileText, FolderOpen, FolderTree, Gem, Inbox, Plus, Search, Send } from 'lucide-react'
 import { api } from '../../api/client'
-import { keys, useSettings } from '../../api/queries'
+import { keys } from '../../api/queries'
 import type { Note, WriteResult } from '../../api/types'
 import { TopBar } from '../../components/TopBar'
 import { Page } from '../../components/Shell'
 import { Button, Card, EmptyState, ErrorView, IconButton, Loading, SectionTitle } from '../../components/ui'
 import { useDialogs } from '../../components/dialogs'
-import { dirname, join } from '../../lib/path'
+import { basename, dirname, join } from '../../lib/path'
 import { relTime, store } from '../../lib/util'
 import { SearchSheet } from '../files/SearchSheet'
 import { FolderPicker } from '../workspaces/FolderPicker'
+import { useWorkspace } from '../workspaces/workspace'
+import { NoteTabs, noteEditPath } from './NoteTabs'
+import { VaultSetup } from './VaultSetup'
 
-export function noteEditPath(p: string, isNew = false) {
-  return '/notes/edit?path=' + encodeURIComponent(p) + (isNew ? '&new=1' : '')
-}
-
-/** Ask for a title and folder, create the note, return its path. */
+/** Ask for a title, create the note in folder, return its path. */
 export function useNewNote() {
   const { prompt, toastError } = useDialogs()
   const qc = useQueryClient()
@@ -39,28 +38,77 @@ export function useNewNote() {
   }
 }
 
+/** Gate for every Notes screen: needs an open workspace with a vault. */
+export function useVaultGate(): { vault: string; ws: number } | { gate: JSX.Element } {
+  const ws = useWorkspace()
+  if (!ws.path) {
+    return {
+      gate: (
+        <>
+          <TopBar title="Notes" />
+          <EmptyState
+            icon={<FolderOpen className="h-10 w-10" />}
+            title="No folder open"
+            body="Open a project folder in Files first. Each project has its own vault."
+            action={
+              <Link to="/files">
+                <Button variant="primary">Go to Files</Button>
+              </Link>
+            }
+          />
+        </>
+      ),
+    }
+  }
+  if (ws.loading) return { gate: <Loading /> }
+  if (!ws.vault) {
+    return {
+      gate: (
+        <>
+          <TopBar title="Notes" subtitle={ws.record?.name} />
+          <Page>
+            <EmptyState
+              icon={<Gem className="h-10 w-10" />}
+              title={`No vault for ${ws.record?.name ?? basename(ws.path)}`}
+              body="Choose the folder that holds this project's notes, like opening a vault in Obsidian."
+            />
+            <div className="px-4 pb-8">
+              <VaultSetup workspace={ws.path} onPick={ws.setVault} />
+            </div>
+          </Page>
+        </>
+      ),
+    }
+  }
+  return { vault: ws.vault, ws: ws.id! }
+}
+
 export function NotesHome() {
-  const settings = useSettings()
-  const root = settings.data?.notesRoot ?? ''
+  const gate = useVaultGate()
+  if ('gate' in gate) return gate.gate
+  return <NotesHomeInner vault={gate.vault} ws={gate.ws} />
+}
+
+function NotesHomeInner({ vault, ws }: { vault: string; ws: number }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { toast, toastError } = useDialogs()
   const newNote = useNewNote()
-  const [text, setText] = useState(() => store.get('kc.capture', ''))
+  const draftKey = `kc.capture:${vault}`
+  const [text, setText] = useState(() => store.get(draftKey, ''))
   const [searchOpen, setSearchOpen] = useState(false)
   const [pickFolder, setPickFolder] = useState(false)
 
   const recent = useQuery({
-    queryKey: keys.notesRecent,
-    queryFn: () => api.get<Note[]>('/api/notes/recent'),
-    enabled: !!root,
+    queryKey: keys.notesRecent(vault),
+    queryFn: () => api.get<Note[]>('/api/notes/recent', { ws }),
   })
 
   const capture = useMutation({
-    mutationFn: (target: 'inbox' | 'daily') => api.post<WriteResult>('/api/notes/capture', { text, target }),
+    mutationFn: (target: 'inbox' | 'daily') => api.post<WriteResult>('/api/notes/capture', { ws: String(ws), text, target }),
     onSuccess: (_r, target) => {
       setText('')
-      store.remove('kc.capture')
+      store.remove(draftKey)
       toast(target === 'inbox' ? 'Added to Inbox' : "Added to today's note")
       qc.invalidateQueries({ queryKey: ['notes'] })
       qc.invalidateQueries({ queryKey: ['fs'] })
@@ -70,37 +118,18 @@ export function NotesHome() {
 
   const openDaily = async () => {
     try {
-      const r = await api.post<{ path: string }>('/api/notes/daily')
+      const r = await api.post<{ path: string }>('/api/notes/daily', { ws: String(ws) })
       navigate(noteEditPath(r.path))
     } catch (e) {
       toastError(e)
     }
   }
 
-  if (settings.isLoading) return <Loading />
-  if (!root) {
-    return (
-      <>
-        <TopBar title="Notes" />
-        <EmptyState
-          icon={<NotebookPen className="h-10 w-10" />}
-          title="Choose your notes folder"
-          body="Point this at your Obsidian vault on the server."
-          action={
-            <Link to="/settings">
-              <Button variant="primary">Open Settings</Button>
-            </Link>
-          }
-        />
-      </>
-    )
-  }
-
   return (
     <>
       <TopBar
         title="Notes"
-        subtitle={root.split('/').pop()}
+        subtitle={basename(vault)}
         actions={
           <>
             <IconButton label="Search notes" onClick={() => setSearchOpen(true)}>
@@ -112,6 +141,7 @@ export function NotesHome() {
           </>
         }
       />
+      <NoteTabs vault={vault} active={null} />
       <Page onRefresh={() => recent.refetch()}>
         <SectionTitle>Quick capture</SectionTitle>
         <Card className="p-3">
@@ -119,7 +149,7 @@ export function NotesHome() {
             value={text}
             onChange={(e) => {
               setText(e.target.value)
-              store.set('kc.capture', e.target.value)
+              store.set(draftKey, e.target.value)
             }}
             rows={3}
             placeholder="A thought, a todo, a prompt…"
@@ -156,7 +186,7 @@ export function NotesHome() {
             <span className="font-medium">Today's note</span>
           </button>
           <Link
-            to={'/notes/browse?path=' + encodeURIComponent(root)}
+            to={'/notes/browse?path=' + encodeURIComponent(vault)}
             className="flex items-center gap-2 rounded-2xl bg-surface px-4 py-3.5 active:bg-raised"
           >
             <FolderTree className="h-5 w-5 text-accent" />
@@ -167,7 +197,7 @@ export function NotesHome() {
         <SectionTitle>Recent</SectionTitle>
         {recent.isLoading && <Loading />}
         {recent.error && <ErrorView error={recent.error} onRetry={() => recent.refetch()} />}
-        {recent.data && recent.data.length === 0 && <EmptyState title="No notes yet" />}
+        {recent.data && recent.data.length === 0 && <EmptyState title="No notes yet" body="Tap + to write the first one." />}
         {recent.data && recent.data.length > 0 && (
           <Card className="mb-6">
             {recent.data.map((n, i) => (
@@ -180,7 +210,7 @@ export function NotesHome() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[15px]">{n.name}</div>
                   <div className="truncate text-xs text-muted">
-                    {dirname(n.rel) === '/' || !n.rel.includes('/') ? '' : dirname(n.rel) + ' · '}
+                    {n.rel.includes('/') ? dirname(n.rel) + ' · ' : ''}
                     {relTime(n.mtime)}
                   </div>
                 </div>
@@ -192,18 +222,16 @@ export function NotesHome() {
       <SearchSheet
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
-        root={root}
+        root={vault}
         defaultMode="content"
         title="Search notes"
         onPick={(h) =>
-          h.type === 'dir'
-            ? navigate('/notes/browse?path=' + encodeURIComponent(h.path))
-            : navigate(noteEditPath(h.path))
+          h.type === 'dir' ? navigate('/notes/browse?path=' + encodeURIComponent(h.path)) : navigate(noteEditPath(h.path))
         }
       />
       <FolderPicker
         open={pickFolder}
-        start={root}
+        start={vault}
         title="New note in…"
         confirmLabel="Create note here"
         onClose={() => setPickFolder(false)}

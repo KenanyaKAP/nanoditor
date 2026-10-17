@@ -64,23 +64,24 @@ type pathsReq struct {
 	Paths []string `json:"paths"`
 }
 
+// gitRepos lists the repos inside a workspace's folder: the folder itself if
+// it is a repo, otherwise every repo found below it (up to its scan depth).
 func (s *Server) gitRepos(w http.ResponseWriter, r *http.Request) {
-	set, err := s.settings()
+	ws, err := s.workspaceByID(r.URL.Query().Get("ws"))
 	if err != nil {
 		writeErr(w, err)
 		return
 	}
-	var roots []string
-	for _, g := range set.GitRoots {
-		if p, err := s.Box.Resolve(g); err == nil {
-			roots = append(roots, p)
-		}
+	root, err := s.resolveDir(ws.Path)
+	if err != nil {
+		writeErr(w, err)
+		return
 	}
-	repos := s.Git.Summaries(r.Context(), roots, set.ScanDepth, r.URL.Query().Get("fresh") == "1")
+	repos := s.Git.Summaries(r.Context(), []string{root}, ws.Settings.ScanDepth, r.URL.Query().Get("fresh") == "1")
 	if repos == nil {
 		repos = []gitx.RepoSummary{}
 	}
-	writeJSON(w, map[string]any{"roots": roots, "repos": repos})
+	writeJSON(w, map[string]any{"root": root, "repos": repos})
 }
 
 func (s *Server) gitStatus(w http.ResponseWriter, r *http.Request) {

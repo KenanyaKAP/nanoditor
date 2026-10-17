@@ -12,7 +12,6 @@ import { useDialogs } from '../../components/dialogs'
 import { useMe } from '../../api/queries'
 import { cx } from '../../lib/util'
 import { tildify } from '../../lib/path'
-import { setCurrentWorkspace } from '../workspaces/workspace'
 import { ChangesList } from './ChangesList'
 import { CommitComposer } from './CommitComposer'
 import { HistoryList } from './HistoryList'
@@ -158,8 +157,7 @@ export function RepoView() {
           icon={<FolderOpen className="h-5 w-5" />}
           onClick={() => {
             setMenu(false)
-            setCurrentWorkspace(repo)
-            navigate('/files')
+            navigate('/files?path=' + encodeURIComponent(repo))
           }}
         >
           Browse files

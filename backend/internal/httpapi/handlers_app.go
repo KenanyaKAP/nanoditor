@@ -24,7 +24,7 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) settings() (store.Settings, error) {
-	return s.Store.Settings(s.Cfg.Home)
+	return s.Store.Settings()
 }
 
 func (s *Server) getSettings(w http.ResponseWriter, r *http.Request) {
@@ -41,32 +41,6 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	if err := decode(r, &in); err != nil {
 		writeErr(w, err)
 		return
-	}
-	if in.NotesRoot != "" {
-		p, err := s.resolveDir(in.NotesRoot)
-		if err != nil {
-			writeErr(w, err)
-			return
-		}
-		in.NotesRoot = p
-	}
-	roots := []string{}
-	for _, g := range in.GitRoots {
-		if strings.TrimSpace(g) == "" {
-			continue
-		}
-		p, err := s.resolveDir(g)
-		if err != nil {
-			writeErr(w, err)
-			return
-		}
-		roots = append(roots, p)
-	}
-	in.GitRoots = roots
-	in.DailyFolder = cleanRel(in.DailyFolder, "Daily")
-	in.InboxFile = cleanRel(in.InboxFile, "Inbox.md")
-	if in.ScanDepth < 1 || in.ScanDepth > 6 {
-		in.ScanDepth = 3
 	}
 	switch in.Theme {
 	case "light", "dark", "system":
@@ -143,18 +117,59 @@ func (s *Server) updateWorkspace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Name  *string `json:"name"`
-		Touch bool    `json:"touch"`
+		Name     *string                  `json:"name"`
+		Settings *store.WorkspaceSettings `json:"settings"`
+		Touch    bool                     `json:"touch"`
 	}
 	if err := decode(r, &in); err != nil {
 		writeErr(w, err)
 		return
 	}
-	if err := s.Store.UpdateWorkspace(id, in.Name, in.Touch); err != nil {
+	if in.Settings != nil {
+		if err := s.cleanWorkspaceSettings(in.Settings); err != nil {
+			writeErr(w, err)
+			return
+		}
+	}
+	if err := s.Store.UpdateWorkspace(id, in.Name, in.Settings, in.Touch); err != nil {
 		writeErr(w, err)
 		return
 	}
-	writeJSON(w, map[string]bool{"ok": true})
+	ws, err := s.Store.Workspace(id)
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	writeJSON(w, ws)
+}
+
+func (s *Server) cleanWorkspaceSettings(set *store.WorkspaceSettings) error {
+	if set.VaultPath != "" {
+		p, err := s.resolveDir(set.VaultPath)
+		if err != nil {
+			return err
+		}
+		set.VaultPath = p
+	}
+	set.DailyFolder = cleanRel(set.DailyFolder, "Daily")
+	set.InboxFile = cleanRel(set.InboxFile, "Inbox.md")
+	if set.ScanDepth < 1 || set.ScanDepth > 6 {
+		set.ScanDepth = 3
+	}
+	return nil
+}
+
+// workspaceByID loads the workspace named by a client-supplied id.
+func (s *Server) workspaceByID(raw string) (store.Workspace, error) {
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return store.Workspace{}, apperr.BadRequest("workspace id is required")
+	}
+	ws, err := s.Store.Workspace(id)
+	if err != nil {
+		return ws, apperr.NotFound("no such workspace")
+	}
+	return ws, nil
 }
 
 func (s *Server) deleteWorkspace(w http.ResponseWriter, r *http.Request) {

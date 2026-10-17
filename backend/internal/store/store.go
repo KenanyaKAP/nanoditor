@@ -16,22 +16,31 @@ type Store struct {
 	db *sql.DB
 }
 
+// Settings are app-wide. Everything about a project lives on its Workspace.
 type Settings struct {
-	NotesRoot   string   `json:"notesRoot"`
-	DailyFolder string   `json:"dailyFolder"`
-	InboxFile   string   `json:"inboxFile"`
-	GitRoots    []string `json:"gitRoots"`
-	ScanDepth   int      `json:"scanDepth"`
-	ShowHidden  bool     `json:"showHidden"`
-	Theme       string   `json:"theme"` // system | light | dark
+	Theme string `json:"theme"` // system | light | dark
+}
+
+// WorkspaceSettings are saved per workspace, independently of each other.
+type WorkspaceSettings struct {
+	VaultPath   string `json:"vaultPath"`   // "" when the workspace has no notes vault
+	DailyFolder string `json:"dailyFolder"` // relative to the vault
+	InboxFile   string `json:"inboxFile"`   // relative to the vault
+	ScanDepth   int    `json:"scanDepth"`   // how deep to look for git repos
+	ShowHidden  bool   `json:"showHidden"`
+}
+
+func DefaultWorkspaceSettings() WorkspaceSettings {
+	return WorkspaceSettings{DailyFolder: "Daily", InboxFile: "Inbox.md", ScanDepth: 3}
 }
 
 type Workspace struct {
-	ID           int64  `json:"id"`
-	Name         string `json:"name"`
-	Path         string `json:"path"`
-	CreatedAt    int64  `json:"createdAt"`
-	LastOpenedAt int64  `json:"lastOpenedAt"`
+	ID           int64             `json:"id"`
+	Name         string            `json:"name"`
+	Path         string            `json:"path"`
+	Settings     WorkspaceSettings `json:"settings"`
+	CreatedAt    int64             `json:"createdAt"`
+	LastOpenedAt int64             `json:"lastOpenedAt"`
 }
 
 type Recent struct {
@@ -74,24 +83,43 @@ func Open(dataDir string) (*Store, error) {
 			return nil, fmt.Errorf("migration %d: %w", i, err)
 		}
 	}
+	if err := addColumn(db, "workspaces", "settings", "TEXT NOT NULL DEFAULT '{}'"); err != nil {
+		return nil, err
+	}
 	return &Store{db: db}, nil
+}
+
+// addColumn adds a column if it isn't there yet (SQLite has no IF NOT EXISTS for columns).
+func addColumn(db *sql.DB, table, col, def string) error {
+	rows, err := db.Query(`SELECT name FROM pragma_table_info(?)`, table)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return err
+		}
+		if name == col {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	_, err = db.Exec(fmt.Sprintf(`ALTER TABLE %s ADD COLUMN %s %s`, table, col, def))
+	return err
 }
 
 func (s *Store) Close() error { return s.db.Close() }
 
-func DefaultSettings(home string) Settings {
-	return Settings{
-		NotesRoot:   filepath.Join(home, "Documents/ken-linux-vault"),
-		DailyFolder: "Daily",
-		InboxFile:   "Inbox.md",
-		GitRoots:    []string{},
-		ScanDepth:   3,
-		Theme:       "system",
-	}
+func DefaultSettings() Settings {
+	return Settings{Theme: "system"}
 }
 
-func (s *Store) Settings(home string) (Settings, error) {
-	set := DefaultSettings(home)
+func (s *Store) Settings() (Settings, error) {
+	set := DefaultSettings()
 	var raw string
 	err := s.db.QueryRow(`SELECT value FROM kv WHERE key = 'settings'`).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -102,9 +130,6 @@ func (s *Store) Settings(home string) (Settings, error) {
 	}
 	if err := json.Unmarshal([]byte(raw), &set); err != nil {
 		return set, err
-	}
-	if set.GitRoots == nil {
-		set.GitRoots = []string{}
 	}
 	return set, nil
 }
@@ -120,16 +145,15 @@ func (s *Store) SaveSettings(set Settings) error {
 }
 
 func (s *Store) Workspaces() ([]Workspace, error) {
-	rows, err := s.db.Query(`SELECT id, name, path, created_at, last_opened_at FROM workspaces
-		ORDER BY last_opened_at DESC, name`)
+	rows, err := s.db.Query(`SELECT ` + wsCols + ` FROM workspaces ORDER BY last_opened_at DESC, name`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	out := []Workspace{}
 	for rows.Next() {
-		var w Workspace
-		if err := rows.Scan(&w.ID, &w.Name, &w.Path, &w.CreatedAt, &w.LastOpenedAt); err != nil {
+		w, err := scanWorkspace(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, w)
@@ -145,13 +169,37 @@ func (s *Store) UpsertWorkspace(name, path string) (Workspace, error) {
 	if err != nil {
 		return Workspace{}, err
 	}
-	var w Workspace
-	err = s.db.QueryRow(`SELECT id, name, path, created_at, last_opened_at FROM workspaces WHERE path = ?`, path).
-		Scan(&w.ID, &w.Name, &w.Path, &w.CreatedAt, &w.LastOpenedAt)
-	return w, err
+	return scanWorkspace(s.db.QueryRow(`SELECT `+wsCols+` FROM workspaces WHERE path = ?`, path))
 }
 
-func (s *Store) UpdateWorkspace(id int64, name *string, touch bool) error {
+func (s *Store) Workspace(id int64) (Workspace, error) {
+	return scanWorkspace(s.db.QueryRow(`SELECT `+wsCols+` FROM workspaces WHERE id = ?`, id))
+}
+
+const wsCols = `id, name, path, settings, created_at, last_opened_at`
+
+func scanWorkspace(row interface{ Scan(...any) error }) (Workspace, error) {
+	var w Workspace
+	var raw string
+	if err := row.Scan(&w.ID, &w.Name, &w.Path, &raw, &w.CreatedAt, &w.LastOpenedAt); err != nil {
+		return w, err
+	}
+	// Missing keys keep their defaults.
+	w.Settings = DefaultWorkspaceSettings()
+	_ = json.Unmarshal([]byte(raw), &w.Settings)
+	return w, nil
+}
+
+func (s *Store) UpdateWorkspace(id int64, name *string, set *WorkspaceSettings, touch bool) error {
+	if set != nil {
+		b, err := json.Marshal(set)
+		if err != nil {
+			return err
+		}
+		if _, err := s.db.Exec(`UPDATE workspaces SET settings = ? WHERE id = ?`, string(b), id); err != nil {
+			return err
+		}
+	}
 	if name != nil {
 		if _, err := s.db.Exec(`UPDATE workspaces SET name = ? WHERE id = ?`, *name, id); err != nil {
 			return err

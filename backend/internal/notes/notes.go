@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -190,6 +191,34 @@ func (s *Service) Resolve(ctx context.Context, c Config, name string) (string, e
 		return "", apperr.NotFound("no note named " + name)
 	}
 	return best, nil
+}
+
+// DetectVaults returns folders under root (root included) that contain an
+// .obsidian directory, searching up to depth levels deep.
+func DetectVaults(root string, depth int) []string {
+	out := []string{}
+	var walk func(dir string, level int)
+	walk = func(dir string, level int) {
+		if st, err := os.Stat(filepath.Join(dir, ".obsidian")); err == nil && st.IsDir() {
+			out = append(out, dir)
+			return
+		}
+		if level >= depth {
+			return
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return
+		}
+		for _, e := range entries {
+			name := e.Name()
+			if e.IsDir() && !strings.HasPrefix(name, ".") && !fsapi.SkipDirs[name] {
+				walk(filepath.Join(dir, name), level+1)
+			}
+		}
+	}
+	walk(root, 0)
+	return out
 }
 
 func dailyHeader(t time.Time) string {

@@ -75,6 +75,7 @@ func (s *Server) Routes() http.Handler {
 		r.Post("/api/notes/capture", s.notesCapture)
 		r.Post("/api/notes/daily", s.notesDaily)
 		r.Get("/api/notes/resolve", s.notesResolve)
+		r.Get("/api/notes/detect", s.notesDetect)
 
 		r.Get("/api/git/repos", s.gitRepos)
 		r.Get("/api/git/status", s.gitStatus)

@@ -4,11 +4,10 @@ import { ChevronsUpDown, Eye, EyeOff, FilePlus2, FolderOpen, FolderPlus, MoreVer
 import { TopBar } from '../../components/TopBar'
 import { Button, EmptyState, IconButton } from '../../components/ui'
 import { Sheet, SheetItem } from '../../components/Sheet'
-import { useMe, useSettings } from '../../api/queries'
+import { useMe } from '../../api/queries'
 import { basename, relative, tildify } from '../../lib/path'
-import { store } from '../../lib/util'
 import { WorkspaceSheet } from '../workspaces/WorkspaceSheet'
-import { useCurrentWorkspace } from '../workspaces/workspace'
+import { useWorkspace } from '../workspaces/workspace'
 import { DirList } from './DirList'
 import { SearchSheet } from './SearchSheet'
 import { useFileOps } from './FileActions'
@@ -20,14 +19,14 @@ export function viewPath(p: string) {
 export function FilesPage() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
-  const [workspace] = useCurrentWorkspace()
+  const ws = useWorkspace()
+  const workspace = ws.path
   const me = useMe()
-  const settings = useSettings()
   const ops = useFileOps()
   const [wsOpen, setWsOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [hidden, setHidden] = useState<boolean>(() => store.get('kc.files.hidden', settings.data?.showHidden ?? false))
+  const hidden = ws.settings?.showHidden ?? false
 
   const path = params.get('path') || workspace
   const base = workspace && path && relative(workspace, path) !== null ? workspace : path
@@ -114,8 +113,7 @@ export function FilesPage() {
         <SheetItem
           icon={hidden ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
           onClick={() => {
-            setHidden(!hidden)
-            store.set('kc.files.hidden', !hidden)
+            ws.updateSettings({ showHidden: !hidden })
             setMenuOpen(false)
           }}
         >

@@ -7,21 +7,14 @@ import (
 	"strings"
 	"time"
 
+	"kennycode/internal/apperr"
 	"kennycode/internal/gitx"
+	"kennycode/internal/notes"
 )
 
 func (s *Server) fsList(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	set, err := s.settings()
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	hidden := set.ShowHidden
-	if v := q.Get("hidden"); v != "" {
-		hidden = v == "1"
-	}
-	l, err := s.FS.List(q.Get("path"), hidden, q.Get("dirs") == "1")
+	l, err := s.FS.List(q.Get("path"), q.Get("hidden") == "1", q.Get("dirs") == "1")
 	if err != nil {
 		writeErr(w, err)
 		return
@@ -193,16 +186,21 @@ func (s *Server) invalidateRepoOf(p string) {
 	}
 }
 
-func (s *Server) notesConfig() (notesCfg, error) {
-	set, err := s.settings()
+// notesConfig builds the notes config from a workspace's own settings
+// (each workspace has its own vault).
+func (s *Server) notesConfig(wsID string) (notesCfg, error) {
+	ws, err := s.workspaceByID(wsID)
 	if err != nil {
 		return notesCfg{}, err
 	}
-	return notesCfg{Root: set.NotesRoot, DailyFolder: set.DailyFolder, InboxFile: set.InboxFile}, nil
+	if ws.Settings.VaultPath == "" {
+		return notesCfg{}, apperr.BadRequest("this workspace has no notes vault yet (see Settings)")
+	}
+	return notesCfg{Root: ws.Settings.VaultPath, DailyFolder: ws.Settings.DailyFolder, InboxFile: ws.Settings.InboxFile}, nil
 }
 
 func (s *Server) notesRecent(w http.ResponseWriter, r *http.Request) {
-	c, err := s.notesConfig()
+	c, err := s.notesConfig(r.URL.Query().Get("ws"))
 	if err != nil {
 		writeErr(w, err)
 		return
@@ -217,6 +215,7 @@ func (s *Server) notesRecent(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) notesCapture(w http.ResponseWriter, r *http.Request) {
 	var in struct {
+		WS     string `json:"ws"`
 		Text   string `json:"text"`
 		Target string `json:"target"`
 	}
@@ -224,7 +223,7 @@ func (s *Server) notesCapture(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
-	c, err := s.notesConfig()
+	c, err := s.notesConfig(in.WS)
 	if err != nil {
 		writeErr(w, err)
 		return
@@ -239,7 +238,14 @@ func (s *Server) notesCapture(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) notesDaily(w http.ResponseWriter, r *http.Request) {
-	c, err := s.notesConfig()
+	var in struct {
+		WS string `json:"ws"`
+	}
+	if err := decode(r, &in); err != nil {
+		writeErr(w, err)
+		return
+	}
+	c, err := s.notesConfig(in.WS)
 	if err != nil {
 		writeErr(w, err)
 		return
@@ -253,7 +259,7 @@ func (s *Server) notesDaily(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) notesResolve(w http.ResponseWriter, r *http.Request) {
-	c, err := s.notesConfig()
+	c, err := s.notesConfig(r.URL.Query().Get("ws"))
 	if err != nil {
 		writeErr(w, err)
 		return
@@ -264,4 +270,14 @@ func (s *Server) notesResolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]string{"path": p})
+}
+
+// notesDetect lists folders under root that look like Obsidian vaults.
+func (s *Server) notesDetect(w http.ResponseWriter, r *http.Request) {
+	root, err := s.resolveDir(r.URL.Query().Get("root"))
+	if err != nil {
+		writeErr(w, err)
+		return
+	}
+	writeJSON(w, notes.DetectVaults(root, 3))
 }

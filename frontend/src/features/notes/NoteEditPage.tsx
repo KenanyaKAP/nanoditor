@@ -14,29 +14,47 @@ import { CodeEditor } from '../../editor/CodeEditor'
 import { EditorToolbar } from '../../editor/EditorToolbar'
 import { ConflictSheet, DraftBanner, SaveIndicator } from '../../editor/EditorChrome'
 import { useFileDoc } from '../../editor/useFileDoc'
-import { basename, dirname, isMarkdown } from '../../lib/path'
+import { basename, dirname, isMarkdown, relative } from '../../lib/path'
 import { copyText } from '../../lib/util'
 import { useFileOps } from '../files/FileActions'
 import { viewPath } from '../files/FilesPage'
-import { noteEditPath } from './NotesHome'
+import { useVaultGate } from './NotesHome'
+import { NoteTabs, noteEditPath } from './NoteTabs'
+import { addOpenNote, closeOpenNote, renameOpenNote } from './openNotes'
+
+// Each open tab remembers whether it was in edit or preview mode.
+const modes = new Map<string, 'edit' | 'preview'>()
 
 export function NoteEditPage() {
-  const [params, setParams] = useSearchParams()
+  const gate = useVaultGate()
+  const [params] = useSearchParams()
   const path = params.get('path') ?? ''
-  const isNew = params.get('new') === '1'
+  if ('gate' in gate) return gate.gate
+  // Keyed by path: switching tabs mounts a fresh editor for that note.
+  return <NoteEditor key={path} path={path} vault={gate.vault} ws={gate.ws} isNew={params.get('new') === '1'} />
+}
+
+function NoteEditor({ path, vault, ws, isNew }: { path: string; vault: string; ws: number; isNew: boolean }) {
   const navigate = useNavigate()
   const { toast, toastError } = useDialogs()
   const ops = useFileOps()
   // Notes autosave two seconds after you stop typing.
   const doc = useFileDoc(path, { autosaveMs: 2000 })
-  const [mode, setMode] = useState<'edit' | 'preview'>(isNew ? 'edit' : 'preview')
+  const [mode, setModeState] = useState<'edit' | 'preview'>(() => modes.get(path) ?? (isNew ? 'edit' : 'preview'))
   const [view, setView] = useState<EditorView | null>(null)
   const [focused, setFocused] = useState(false)
   const [menu, setMenu] = useState(false)
 
+  const setMode = (m: 'edit' | 'preview') => {
+    modes.set(path, m)
+    setModeState(m)
+  }
+
   useEffect(() => {
-    if (doc.file) touchRecent(path, 'note')
-  }, [doc.file, path])
+    if (!doc.file) return
+    touchRecent(path, 'note')
+    addOpenNote(vault, path)
+  }, [doc.file, path, vault])
 
   // Put the cursor at the end of a brand-new note.
   useEffect(() => {
@@ -45,16 +63,15 @@ export function NoteEditPage() {
     view.focus()
   }, [isNew, view, doc.file])
 
-  const leave = async () => {
+  /** Save pending edits before leaving this note (tab switch, back, close). */
+  const flush = async () => {
     if (doc.dirty && doc.saveState !== 'conflict') {
       try {
         await doc.save()
       } catch (e) {
         toastError(e)
-        return
       }
     }
-    navigate(-1)
   }
 
   const copyAll = async () => {
@@ -63,17 +80,22 @@ export function NoteEditPage() {
   }
 
   const title = basename(path).replace(/\.md$/i, '')
+  const folder = relative(vault, dirname(path))
 
   return (
     <>
       <TopBar
         back
-        onBack={leave}
+        onBack={async () => {
+          await flush()
+          navigate('/notes')
+        }}
         title={
           <span className="inline-flex items-center gap-2">
             {title} <SaveIndicator state={doc.saveState} dirty={doc.dirty} />
           </span>
         }
+        subtitle={folder || basename(vault)}
         actions={
           <>
             <IconButton label="Copy note" onClick={copyAll}>
@@ -94,6 +116,7 @@ export function NoteEditPage() {
           </>
         }
       />
+      {!focused && <NoteTabs vault={vault} active={path} onSwitch={flush} />}
       {doc.query.isLoading && <Loading />}
       {doc.query.error && <ErrorView error={doc.query.error} onRetry={() => doc.query.refetch()} />}
       {doc.file && (
@@ -108,7 +131,8 @@ export function NoteEditPage() {
                   onOpenPath={(p) => navigate(isMarkdown(p) ? noteEditPath(p) : viewPath(p))}
                   onWikiLink={async (name) => {
                     try {
-                      const r = await api.get<{ path: string }>('/api/notes/resolve', { name })
+                      const r = await api.get<{ path: string }>('/api/notes/resolve', { ws, name })
+                      await flush()
                       navigate(noteEditPath(r.path))
                     } catch {
                       toast(`No note named "${name}" yet`, 'error')
@@ -145,17 +169,21 @@ export function NoteEditPage() {
           icon={<TextCursorInput className="h-5 w-5" />}
           onClick={async () => {
             setMenu(false)
-            if (doc.dirty) await doc.save().catch(toastError)
+            await flush()
             const p = await ops.rename(path)
-            if (p) setParams({ path: p }, { replace: true })
+            if (p) {
+              renameOpenNote(vault, path, p)
+              navigate(noteEditPath(p), { replace: true })
+            }
           }}
         >
           Rename
         </SheetItem>
         <SheetItem
           icon={<FolderOpen className="h-5 w-5" />}
-          onClick={() => {
+          onClick={async () => {
             setMenu(false)
+            await flush()
             navigate('/notes/browse?path=' + encodeURIComponent(dirname(path)))
           }}
         >
@@ -175,7 +203,10 @@ export function NoteEditPage() {
           icon={<Trash2 className="h-5 w-5" />}
           onClick={async () => {
             setMenu(false)
-            if (await ops.remove(path, false)) navigate(-1)
+            if (await ops.remove(path, false)) {
+              const next = closeOpenNote(vault, path)
+              navigate(next ? noteEditPath(next) : '/notes', { replace: true })
+            }
           }}
         >
           Delete note
