@@ -16,22 +16,52 @@ export interface MarkdownViewProps {
 
 const WIKI = 'wikilink:'
 
+type HastNode = {
+  type: string
+  tagName?: string
+  properties?: Record<string, unknown>
+  position?: { start: { line: number }; end: { line: number } }
+  children?: HastNode[]
+}
+
+const blocks = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'pre', 'blockquote', 'tr', 'hr'])
+
+/**
+ * Marks each block with the file lines it came from (data-line, data-end), so
+ * switching to the editor can keep your place (editor/sourceLine.ts).
+ * `offset` is the front matter's lines, which are cut off before parsing.
+ */
+function rehypeSourceLines({ offset }: { offset: number }) {
+  const walk = (n: HastNode) => {
+    if (n.type === 'element' && n.position && n.properties && blocks.has(n.tagName ?? '')) {
+      n.properties.dataLine = n.position.start.line + offset
+      n.properties.dataEnd = n.position.end.line + offset
+    }
+    n.children?.forEach(walk)
+  }
+  return walk
+}
+
 export const MarkdownView = memo(function MarkdownView({ content, filePath, onOpenPath, onWikiLink }: MarkdownViewProps) {
   const { frontmatter, body } = useMemo(() => splitFrontmatter(content), [content])
   const source = useMemo(() => wikilinksToMarkdown(body), [body])
+  const offset = content.slice(0, content.length - body.length).split('\n').length - 1
   const dir = dirname(filePath)
 
   return (
     <div className="md px-4 py-3">
       {frontmatter && (
-        <details className="mb-3 rounded-lg bg-raised px-3 py-2 text-sm">
+        <details className="mb-3 rounded-lg bg-raised px-3 py-2 text-sm" data-line={1} data-end={offset}>
           <summary className="cursor-pointer select-none text-muted">Properties</summary>
           <pre className="mt-2 whitespace-pre-wrap font-mono text-xs">{frontmatter}</pre>
         </details>
       )}
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[[rehypeHighlight, { detect: false, ignoreMissing: true }]]}
+        rehypePlugins={[
+          [rehypeSourceLines, { offset }],
+          [rehypeHighlight, { detect: false, ignoreMissing: true }],
+        ]}
         urlTransform={(url) => (url.startsWith(WIKI) ? url : defaultUrlTransform(url))}
         components={{
           a({ href = '', children, ...rest }) {

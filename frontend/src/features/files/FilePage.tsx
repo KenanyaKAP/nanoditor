@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { EditorView } from '@codemirror/view'
 import { EditorSelection } from '@codemirror/state'
@@ -31,6 +31,7 @@ import { CodeEditor } from '../../editor/CodeEditor'
 import { EditorToolbar } from '../../editor/EditorToolbar'
 import { ConflictSheet, DraftBanner, SaveIndicator } from '../../editor/EditorChrome'
 import { moveDraft, removeDraft } from '../../editor/drafts'
+import { editorLine, renderedLine, scrollEditorTo, scrollRenderedTo } from '../../editor/sourceLine'
 import { useFileDoc } from '../../editor/useFileDoc'
 import { basename, dirname, isMarkdown, relative, tildify } from '../../lib/path'
 import { copyText, fileSize, fullTime, store } from '../../lib/util'
@@ -85,6 +86,10 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
   const [focused, setFocused] = useState(false)
   const [menu, setMenu] = useState(false)
   const jumped = useRef(false)
+  // Markdown: the line at the top of the screen, kept across switching
+  // between the rendered view and the editor, which lay it out differently.
+  const place = useRef<{ line: number; from: string } | null>(null)
+  const rendered = useRef<HTMLDivElement>(null)
 
   const f = doc.file
   const loaded = !!f
@@ -108,10 +113,34 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
             ? 'markdown'
             : 'code'
 
+  const remember = () => {
+    // The rendered view scrolls in its parent, the Page.
+    const r = rendered.current
+    if (display === 'markdown' && r) place.current = { line: renderedLine(r, r.parentElement!), from: display }
+    else if (md && display === 'code' && view) place.current = { line: editorLine(view), from: display }
+  }
+
   const setMode = (m: 'view' | 'edit') => {
+    remember()
     modes.set(path, m)
     setModeState(m)
   }
+
+  const toggleSource = () => {
+    remember()
+    setSource(!source)
+  }
+
+  // Once the other view is showing (the editor mounts a beat later), scroll it to the same line.
+  useLayoutEffect(() => {
+    const p = place.current
+    const r = rendered.current
+    if (!p || p.from === display) return
+    if (display === 'markdown' && r) scrollRenderedTo(r, r.parentElement!, p.line)
+    else if (display === 'code' && view) scrollEditorTo(view, p.line)
+    else return
+    place.current = null
+  }, [display, view])
 
   useEffect(() => {
     if (!loaded) return
@@ -262,7 +291,7 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
             </Page>
           ) : display === 'markdown' ? (
             <Page>
-              <div onDoubleClick={() => editable && setMode('edit')}>
+              <div ref={rendered} onDoubleClick={() => editable && setMode('edit')}>
                 <MarkdownView
                   content={doc.content}
                   filePath={path}
@@ -331,7 +360,7 @@ function FileEditor({ path, isNew, edit, line }: { path: string; isNew: boolean;
           <SheetItem
             icon={source ? <BookOpen className="h-5 w-5" /> : <FileCode2 className="h-5 w-5" />}
             onClick={() => {
-              setSource(!source)
+              toggleSource()
               setMenu(false)
             }}
           >
