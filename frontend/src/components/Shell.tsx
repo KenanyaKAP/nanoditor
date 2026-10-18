@@ -17,24 +17,49 @@ const tabs = [
  * Track the visual viewport so the layout shrinks above the iOS keyboard
  * instead of being pushed off-screen. Exposes --vvh / --vv-top CSS vars and
  * returns whether the keyboard appears to be open.
+ *
+ * The keyboard counts as open while something editable has focus and the
+ * viewport is well short of the tallest it has been at this width. (Newer iOS
+ * shrinks window.innerHeight along with it, so that can't be the measure.)
  */
 function useVisualViewport(): boolean {
   const [keyboard, setKeyboard] = useState(false)
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
+    const tallest = new Map<number, number>()
+    let open = false
+    let width = 0
     const update = () => {
       const root = document.documentElement
       root.style.setProperty('--vvh', `${vv.height}px`)
       root.style.setProperty('--vv-top', `${vv.offsetTop}px`)
-      setKeyboard(window.innerHeight - vv.height > 140)
+      const w = window.innerWidth
+      const max = Math.max(tallest.get(w) ?? 0, vv.height)
+      tallest.set(w, max)
+      const el = document.activeElement
+      const editing =
+        el instanceof HTMLElement && (el.isContentEditable || el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')
+      const now = editing && max - vv.height > 140
+      // The keyboard's own hide button can leave the field focused. Blur it,
+      // as the app's hide buttons do, so what hides while typing (terminal
+      // tabs, editor toolbar) comes back and a tap opens the keyboard again.
+      // Not on rotation: the new width has no measure yet.
+      if (open && !now && editing && w === width) el.blur()
+      open = now
+      width = w
+      setKeyboard(now)
     }
     update()
     vv.addEventListener('resize', update)
     vv.addEventListener('scroll', update)
+    window.addEventListener('focusin', update)
+    window.addEventListener('focusout', update)
     return () => {
       vv.removeEventListener('resize', update)
       vv.removeEventListener('scroll', update)
+      window.removeEventListener('focusin', update)
+      window.removeEventListener('focusout', update)
     }
   }, [])
   return keyboard
