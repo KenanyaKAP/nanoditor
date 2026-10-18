@@ -223,8 +223,8 @@ function TermKeys({
   keyboardOpen: boolean
 }) {
   const send = (d: string) => view.current?.send(d)
-  const text = (label: string, seq: string) => (
-    <button key={label} aria-label={label} className={cx(keyClass, 'text-xs font-semibold')} {...pressProps(() => send(seq))}>
+  const text = (label: string, seq: string, aria = label) => (
+    <button key={label} aria-label={aria} className={cx(keyClass, 'text-xs font-semibold')} {...pressProps(() => send(seq))}>
       {label}
     </button>
   )
@@ -239,6 +239,7 @@ function TermKeys({
       <div className="no-scrollbar flex min-w-0 flex-1 touch-pan-x overflow-x-auto">
         {text('esc', '\x1b')}
         {text('tab', '\t')}
+        {text('⇧tab', '\x1b[Z', 'Shift+Tab')}
         <button
           aria-label="Ctrl"
           aria-pressed={ctrl}
