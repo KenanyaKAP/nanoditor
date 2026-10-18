@@ -10,7 +10,20 @@ export interface TermHandle {
   arrow(dir: 'A' | 'B' | 'C' | 'D'): void
   focus(): void
   blur(): void
+  snapshot(): TermSnapshot
 }
+
+/** The terminal's text, for selecting and copying, with what's needed to lay it out the same. */
+export interface TermSnapshot {
+  /** Lines as the program wrote them; `row` is the buffer row each starts on. */
+  lines: { row: number; text: string }[]
+  /** The buffer row at the top of the screen. */
+  top: number
+  rowHeight: number
+  width: number
+}
+
+export const termFont = { family: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', size: 13 }
 
 // VS Code's terminal colors; the background and text follow the app theme.
 const darkAnsi = {
@@ -56,24 +69,27 @@ export const TerminalView = forwardRef<
     onFocusChange: (focused: boolean) => void
     /** The connection failed or the shell exited: the parent rechecks the list. */
     onGone: () => void
+    /** A finger held still on the terminal, at these screen coordinates. */
+    onLongPress: (x: number, y: number) => void
   }
->(function TerminalView({ id, ctrl, onCtrlUsed, onTitle, onFocusChange, onGone }, ref) {
+>(function TerminalView({ id, ctrl, onCtrlUsed, onTitle, onFocusChange, onGone, onLongPress }, ref) {
   const host = useRef<HTMLDivElement>(null)
   const handle = useRef<TermHandle | null>(null)
-  const cb = useRef({ onCtrlUsed, onTitle, onFocusChange, onGone })
-  cb.current = { onCtrlUsed, onTitle, onFocusChange, onGone }
+  const cb = useRef({ onCtrlUsed, onTitle, onFocusChange, onGone, onLongPress })
+  cb.current = { onCtrlUsed, onTitle, onFocusChange, onGone, onLongPress }
 
   useImperativeHandle(ref, () => ({
     send: (d) => handle.current?.send(d),
     arrow: (k) => handle.current?.arrow(k),
     focus: () => handle.current?.focus(),
     blur: () => handle.current?.blur(),
+    snapshot: () => handle.current!.snapshot(),
   }))
 
   useEffect(() => {
     const term = new Terminal({
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-      fontSize: 13,
+      fontFamily: termFont.family,
+      fontSize: termFont.size,
       cursorBlink: true,
       scrollback: 5000,
       theme: theme(),
@@ -149,6 +165,22 @@ export const TerminalView = forwardRef<
       arrow: (k) => send((term.modes.applicationCursorKeysMode ? '\x1bO' : '\x1b[') + k),
       focus: () => term.focus(),
       blur: () => term.blur(),
+      snapshot: () => {
+        const buf = term.buffer.active
+        const lines: TermSnapshot['lines'] = []
+        for (let i = 0; i < buf.length; i++) {
+          const line = buf.getLine(i)
+          if (!line) continue
+          // Rows the terminal wrapped join back into one line, so a long
+          // command or URL copies whole.
+          const text = line.translateToString(false)
+          if (line.isWrapped && lines.length) lines[lines.length - 1].text += text
+          else lines.push({ row: i, text })
+        }
+        for (const l of lines) l.text = l.text.trimEnd()
+        const screen = host.current!.querySelector('.xterm-screen')!
+        return { lines, top: buf.viewportY, rowHeight: screen.clientHeight / term.rows, width: screen.clientWidth }
+      },
     }
 
     // xterm 6 has no touch scrolling, so finger drags are handled here: the
@@ -162,6 +194,8 @@ export const TerminalView = forwardRef<
     let dragging = false
     let carry = 0
     let glide = 0
+    let press = 0
+    let pressed = false
     const scrollBy = (dy: number) => {
       const screen = el.querySelector('.xterm-screen')
       // Programs that asked for the mouse get wheel events, as from a mouse.
@@ -183,19 +217,27 @@ export const TerminalView = forwardRef<
     }
     const onTouchStart = (e: TouchEvent) => {
       cancelAnimationFrame(glide)
+      window.clearTimeout(press)
+      pressed = false
       if (e.touches.length !== 1) return
-      startY = lastY = e.touches[0].clientY
+      const { clientX, clientY } = e.touches[0]
+      startY = lastY = clientY
       lastT = performance.now()
       velocity = 0
       dragging = false
       carry = 0
+      press = window.setTimeout(() => {
+        pressed = true
+        cb.current.onLongPress(clientX, clientY)
+      }, 500)
     }
     const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return
+      if (e.touches.length !== 1 || pressed) return
       const y = e.touches[0].clientY
       // A small wobble is still a tap (which focuses the terminal).
       if (!dragging && Math.abs(y - startY) < 8) return
       dragging = true
+      window.clearTimeout(press)
       e.preventDefault()
       const now = performance.now()
       const dy = lastY - y
@@ -204,7 +246,10 @@ export const TerminalView = forwardRef<
       lastT = now
       scrollBy(dy)
     }
-    const onTouchEnd = () => {
+    const onTouchEnd = (e: TouchEvent) => {
+      window.clearTimeout(press)
+      // A long press isn't also a tap, which would open the keyboard.
+      if (pressed) return e.preventDefault()
       if (!dragging || performance.now() - lastT > 100) return
       let v = velocity * 16 // px per frame
       const step = () => {
@@ -242,6 +287,7 @@ export const TerminalView = forwardRef<
     return () => {
       disposed = true
       window.clearTimeout(timer)
+      window.clearTimeout(press)
       cancelAnimationFrame(frame)
       cancelAnimationFrame(glide)
       el.removeEventListener('touchstart', onTouchStart)
@@ -259,5 +305,5 @@ export const TerminalView = forwardRef<
     }
   }, [id, ctrl])
 
-  return <div ref={host} className="h-full w-full touch-none" />
+  return <div ref={host} className="h-full w-full touch-none [-webkit-touch-callout:none]" />
 })

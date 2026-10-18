@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, Copy, Keyboard, Plus, SquareTerminal, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, Copy, Keyboard, Plus, SquareTerminal, TextSelect, X } from 'lucide-react'
 import { api } from '../../api/client'
 import { useMe } from '../../api/queries'
 import type { TermSession, TermStatus } from '../../api/types'
@@ -12,7 +12,8 @@ import { keyClass, pressProps, RepeatButton } from '../../components/press'
 import { basename, tildify } from '../../lib/path'
 import { copyText, cx, store } from '../../lib/util'
 import { useWorkspace } from '../workspaces/workspace'
-import { type TermHandle, TerminalView } from './TerminalView'
+import { type TermHandle, type TermSnapshot, TerminalView } from './TerminalView'
+import { TermSelect } from './TermSelect'
 
 const statusKey = ['term'] as const
 
@@ -92,7 +93,7 @@ function Setup({ status, home }: { status: TermStatus; home: string }) {
 function Terminals({ status, home }: { status: TermStatus; home: string }) {
   const qc = useQueryClient()
   const ws = useWorkspace()
-  const { confirm, toastError } = useDialogs()
+  const { confirm, toast, toastError } = useDialogs()
   const sessions = status.sessions
   const [activeId, setActiveId] = useState(() => store.get<string | null>('nd.term.active', null))
   const active = sessions.find((s) => s.id === activeId) ?? sessions[sessions.length - 1] ?? null
@@ -102,10 +103,32 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
   const ctrlRef = useRef(false)
   ctrlRef.current = ctrl
   const view = useRef<TermHandle>(null)
+  // Selecting text: a still copy of the terminal's text, over the live terminal.
+  // The tab row stays as it was, so the text doesn't shift under the finger.
+  const [selecting, setSelecting] = useState<{ snap: TermSnapshot; at?: { x: number; y: number }; hideTabs: boolean } | null>(
+    null,
+  )
+
+  // A copy of one terminal's text doesn't belong over another.
+  useEffect(() => setSelecting(null), [active?.id])
 
   const select = (id: string) => {
     setActiveId(id)
     store.set('nd.term.active', id)
+  }
+
+  const startSelecting = (at?: { x: number; y: number }) => {
+    const v = view.current
+    if (!v) return
+    setSelecting({ snap: v.snapshot(), at, hideTabs: focused })
+    v.blur()
+  }
+
+  const copy = async (text: string) => {
+    if (!text) return toast('Long-press the text to select it', 'info')
+    const ok = await copyText(text)
+    toast(ok ? 'Copied' : 'Copy failed', ok ? 'ok' : 'error')
+    if (ok) setSelecting(null)
   }
   const refresh = () => qc.invalidateQueries({ queryKey: statusKey })
 
@@ -139,9 +162,20 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
         title="Terminal"
         subtitle={active ? `${status.user} · ${active.cwd ? tildify(active.cwd, home) : '~'}` : status.user}
         actions={
-          <IconButton label="New terminal" onClick={() => create.mutate()} disabled={create.isPending}>
-            <Plus className="h-6 w-6" />
-          </IconButton>
+          <>
+            {active && (
+              <IconButton
+                label="Select text"
+                active={!!selecting}
+                {...pressProps(() => (selecting ? setSelecting(null) : startSelecting()))}
+              >
+                <TextSelect className="h-5 w-5" />
+              </IconButton>
+            )}
+            <IconButton label="New terminal" onClick={() => create.mutate()} disabled={create.isPending}>
+              <Plus className="h-6 w-6" />
+            </IconButton>
+          </>
         }
       />
       {sessions.length === 0 ? (
@@ -157,7 +191,7 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
         />
       ) : (
         <>
-          {!focused && (
+          {!focused && !selecting?.hideTabs && (
             <div className="no-scrollbar flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line bg-bg px-2 py-1.5">
               {sessions.map((s, i) => {
                 const isActive = s.id === active?.id
@@ -189,7 +223,7 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
           )}
           {active && (
             <>
-              <div className="min-h-0 flex-1 bg-bg pl-1 pt-1">
+              <div className="relative min-h-0 flex-1 bg-bg pl-1 pt-1">
                 <TerminalView
                   key={active.id}
                   ref={view}
@@ -199,9 +233,19 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
                   onTitle={(t) => setTitles((old) => ({ ...old, [active.id]: t }))}
                   onFocusChange={setFocused}
                   onGone={refresh}
+                  onLongPress={(x, y) => startSelecting({ x, y })}
                 />
+                {selecting && <TermSelect snap={selecting.snap} at={selecting.at} />}
               </div>
-              <TermKeys view={view} ctrl={ctrl} setCtrl={setCtrl} keyboardOpen={focused} />
+              {selecting ? (
+                <SelectBar
+                  onDone={() => setSelecting(null)}
+                  onCopy={() => copy(window.getSelection()?.toString() ?? '')}
+                  onCopyAll={() => copy(selecting.snap.lines.map((l) => l.text).join('\n').trim())}
+                />
+              ) : (
+                <TermKeys view={view} ctrl={ctrl} setCtrl={setCtrl} keyboardOpen={focused} />
+              )}
             </>
           )}
         </>
@@ -268,6 +312,26 @@ function TermKeys({
         {...pressProps(() => (keyboardOpen ? view.current?.blur() : view.current?.focus()))}
       >
         {keyboardOpen ? <ChevronDown className="h-5 w-5" /> : <Keyboard className="h-5 w-5" />}
+      </button>
+    </div>
+  )
+}
+
+/** In place of the key row while selecting text. */
+function SelectBar({ onDone, onCopy, onCopyAll }: { onDone: () => void; onCopy: () => void; onCopyAll: () => void }) {
+  // pressProps keeps the selection: a plain tap on a button would clear it first.
+  return (
+    <div className="flex shrink-0 items-center border-t border-line bg-raised px-safe">
+      <button className={cx(keyClass, 'px-4 text-sm font-medium')} {...pressProps(onDone)}>
+        Done
+      </button>
+      <span className="min-w-0 flex-1 truncate text-center text-xs text-muted">Long-press to select</span>
+      <button className={cx(keyClass, 'px-3 text-sm')} {...pressProps(onCopyAll)}>
+        Copy all
+      </button>
+      <button className={cx(keyClass, 'gap-1.5 px-4 text-sm font-semibold text-accent')} {...pressProps(onCopy)}>
+        <Copy className="h-4 w-4" />
+        Copy
       </button>
     </div>
   )
