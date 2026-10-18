@@ -5,13 +5,23 @@ import '@xterm/xterm/css/xterm.css'
 
 /** What the key row above the keyboard can do to the terminal on screen. */
 export interface TermHandle {
-  send(data: string): void
+  /** A key from the key row, with any sticky Ctrl/Alt. */
+  key(data: string): void
   /** An arrow key, in whichever cursor mode the program asked for. */
   arrow(dir: 'A' | 'B' | 'C' | 'D'): void
+  /** Text as a paste, which shells take whole instead of running line by line. */
+  paste(text: string): void
   focus(): void
   blur(): void
   snapshot(): TermSnapshot
 }
+
+/** Sticky modifiers from the key row: they apply to the next key, then turn off. */
+export interface Mods {
+  ctrl: boolean
+  alt: boolean
+}
+export const noMods: Mods = { ctrl: false, alt: false }
 
 /** The terminal's text, for selecting and copying, with what's needed to lay it out the same. */
 export interface TermSnapshot {
@@ -62,9 +72,8 @@ export const TerminalView = forwardRef<
   TermHandle,
   {
     id: string
-    /** Sticky Ctrl from the key row: turns the next typed key into a control key. */
-    ctrl: React.MutableRefObject<boolean>
-    onCtrlUsed: () => void
+    mods: React.MutableRefObject<Mods>
+    onModsUsed: () => void
     onTitle: (title: string) => void
     onFocusChange: (focused: boolean) => void
     /** The connection failed or the shell exited: the parent rechecks the list. */
@@ -72,15 +81,16 @@ export const TerminalView = forwardRef<
     /** A finger held still on the terminal, at these screen coordinates. */
     onLongPress: (x: number, y: number) => void
   }
->(function TerminalView({ id, ctrl, onCtrlUsed, onTitle, onFocusChange, onGone, onLongPress }, ref) {
+>(function TerminalView({ id, mods, onModsUsed, onTitle, onFocusChange, onGone, onLongPress }, ref) {
   const host = useRef<HTMLDivElement>(null)
   const handle = useRef<TermHandle | null>(null)
-  const cb = useRef({ onCtrlUsed, onTitle, onFocusChange, onGone, onLongPress })
-  cb.current = { onCtrlUsed, onTitle, onFocusChange, onGone, onLongPress }
+  const cb = useRef({ onModsUsed, onTitle, onFocusChange, onGone, onLongPress })
+  cb.current = { onModsUsed, onTitle, onFocusChange, onGone, onLongPress }
 
   useImperativeHandle(ref, () => ({
-    send: (d) => handle.current?.send(d),
+    key: (d) => handle.current?.key(d),
     arrow: (k) => handle.current?.arrow(k),
+    paste: (t) => handle.current?.paste(t),
     focus: () => handle.current?.focus(),
     blur: () => handle.current?.blur(),
     snapshot: () => handle.current!.snapshot(),
@@ -142,15 +152,23 @@ export const TerminalView = forwardRef<
     }
     connect()
 
-    term.onData((d) => {
-      if (ctrl.current && d.length === 1) {
+    // Apply sticky Ctrl/Alt to a key: Ctrl makes a control character,
+    // Alt sends Escape first (what terminals do for Meta).
+    const withMods = (d: string) => {
+      const { ctrl, alt } = mods.current
+      if (!ctrl && !alt) return d
+      if (ctrl && d.length === 1) {
         const c = d.toUpperCase().charCodeAt(0)
         if (c >= 64 && c <= 95) d = String.fromCharCode(c & 31)
         else if (d === ' ') d = '\x00'
-        cb.current.onCtrlUsed()
       }
-      send(d)
-    })
+      mods.current = noMods
+      cb.current.onModsUsed()
+      return alt ? '\x1b' + d : d
+    }
+
+    // Typing on the keyboard (one key at a time; longer input is autocorrect or a paste).
+    term.onData((d) => send(d.length === 1 ? withMods(d) : d))
     term.onBinary((d) => sendBytes(Uint8Array.from(d, (c) => c.charCodeAt(0))))
     term.onResize(sendSize)
     term.onTitleChange((t) => cb.current.onTitle(t))
@@ -161,8 +179,17 @@ export const TerminalView = forwardRef<
     ta?.addEventListener('blur', onBlur)
 
     handle.current = {
-      send,
-      arrow: (k) => send((term.modes.applicationCursorKeysMode ? '\x1bO' : '\x1b[') + k),
+      key: (d) => send(withMods(d)),
+      arrow: (k) => {
+        const { ctrl, alt } = mods.current
+        if (!ctrl && !alt) return send((term.modes.applicationCursorKeysMode ? '\x1bO' : '\x1b[') + k)
+        // With modifiers: ESC [ 1 ; m, where m is 1 + 2 for Alt + 4 for Ctrl
+        // (Alt+Left is a word back in most shells).
+        mods.current = noMods
+        cb.current.onModsUsed()
+        send(`\x1b[1;${1 + (alt ? 2 : 0) + (ctrl ? 4 : 0)}${k}`)
+      },
+      paste: (t) => term.paste(t),
       focus: () => term.focus(),
       blur: () => term.blur(),
       snapshot: () => {
@@ -303,7 +330,7 @@ export const TerminalView = forwardRef<
       handle.current = null
       term.dispose()
     }
-  }, [id, ctrl])
+  }, [id, mods])
 
   return <div ref={host} className="h-full w-full touch-none [-webkit-touch-callout:none]" />
 })

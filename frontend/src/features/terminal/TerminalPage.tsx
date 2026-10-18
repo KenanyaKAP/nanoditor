@@ -1,6 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronDown, Copy, Keyboard, Plus, SquareTerminal, TextSelect, X } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  ChevronDown,
+  ClipboardPaste,
+  Copy,
+  Keyboard,
+  Plus,
+  SquareTerminal,
+  TextSelect,
+  X,
+} from 'lucide-react'
 import { api } from '../../api/client'
 import { useMe } from '../../api/queries'
 import type { TermSession, TermStatus } from '../../api/types'
@@ -12,7 +25,7 @@ import { keyClass, pressProps, RepeatButton } from '../../components/press'
 import { basename, tildify } from '../../lib/path'
 import { copyText, cx, store } from '../../lib/util'
 import { useWorkspace } from '../workspaces/workspace'
-import { type TermHandle, type TermSnapshot, TerminalView } from './TerminalView'
+import { type Mods, noMods, type TermHandle, type TermSnapshot, TerminalView } from './TerminalView'
 import { TermSelect } from './TermSelect'
 
 const statusKey = ['term'] as const
@@ -99,9 +112,10 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
   const active = sessions.find((s) => s.id === activeId) ?? sessions[sessions.length - 1] ?? null
   const [titles, setTitles] = useState<Record<string, string>>({})
   const [focused, setFocused] = useState(false)
-  const [ctrl, setCtrl] = useState(false)
-  const ctrlRef = useRef(false)
-  ctrlRef.current = ctrl
+  const [mods, setMods] = useState<Mods>(noMods)
+  const modsRef = useRef(mods)
+  modsRef.current = mods
+  const [pasting, setPasting] = useState(false)
   const view = useRef<TermHandle>(null)
   // Selecting text: a still copy of the terminal's text, over the live terminal.
   // The tab row stays as it was, so the text doesn't shift under the finger.
@@ -130,6 +144,30 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
     toast(ok ? 'Copied' : 'Copy failed', ok ? 'ok' : 'error')
     if (ok) setSelecting(null)
   }
+
+  const paste = async () => {
+    // Reading the clipboard needs HTTPS. Over plain HTTP, a field takes the
+    // phone's own Paste instead.
+    if (window.isSecureContext && navigator.clipboard?.readText) {
+      try {
+        const text = await navigator.clipboard.readText()
+        if (text) view.current?.paste(text)
+        else toast('The clipboard is empty', 'info')
+        return
+      } catch {
+        // Not allowed: fall back to the field.
+      }
+    }
+    setPasting(true)
+  }
+
+  const pasted = (text: string) => {
+    setPasting(false)
+    if (!text) return toast('Nothing to paste', 'info')
+    view.current?.paste(text)
+    view.current?.focus()
+  }
+
   const refresh = () => qc.invalidateQueries({ queryKey: statusKey })
 
   const create = useMutation({
@@ -191,7 +229,7 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
         />
       ) : (
         <>
-          {!focused && !selecting?.hideTabs && (
+          {!focused && !pasting && !selecting?.hideTabs && (
             <div className="no-scrollbar flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line bg-bg px-2 py-1.5">
               {sessions.map((s, i) => {
                 const isActive = s.id === active?.id
@@ -228,8 +266,8 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
                   key={active.id}
                   ref={view}
                   id={active.id}
-                  ctrl={ctrlRef}
-                  onCtrlUsed={() => setCtrl(false)}
+                  mods={modsRef}
+                  onModsUsed={() => setMods(noMods)}
                   onTitle={(t) => setTitles((old) => ({ ...old, [active.id]: t }))}
                   onFocusChange={setFocused}
                   onGone={refresh}
@@ -244,7 +282,10 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
                   onCopyAll={() => copy(selecting.snap.lines.map((l) => l.text).join('\n').trim())}
                 />
               ) : (
-                <TermKeys view={view} ctrl={ctrl} setCtrl={setCtrl} keyboardOpen={focused} />
+                <>
+                  {pasting && <PasteField onText={pasted} onClose={() => setPasting(false)} />}
+                  <TermKeys view={view} mods={mods} setMods={setMods} onPaste={paste} keyboardOpen={focused} />
+                </>
               )}
             </>
           )}
@@ -254,22 +295,37 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
   )
 }
 
-/** Keys the phone keyboard lacks, in a row above it. Ctrl is sticky: it applies to the next key typed. */
+/** Keys the phone keyboard lacks, in a row above it. Ctrl and Alt are sticky: they apply to the next key. */
 function TermKeys({
   view,
-  ctrl,
-  setCtrl,
+  mods,
+  setMods,
+  onPaste,
   keyboardOpen,
 }: {
   view: React.RefObject<TermHandle>
-  ctrl: boolean
-  setCtrl: (on: boolean) => void
+  mods: Mods
+  setMods: (m: Mods) => void
+  onPaste: () => void
   keyboardOpen: boolean
 }) {
-  const send = (d: string) => view.current?.send(d)
+  const key = (d: string) => view.current?.key(d)
   const text = (label: string, seq: string, aria = label) => (
-    <button key={label} aria-label={aria} className={cx(keyClass, 'text-xs font-semibold')} {...pressProps(() => send(seq))}>
+    <button key={label} aria-label={aria} className={cx(keyClass, 'text-xs font-semibold')} {...pressProps(() => key(seq))}>
       {label}
+    </button>
+  )
+  const mod = (m: keyof Mods, label: string) => (
+    <button
+      aria-label={label}
+      aria-pressed={mods[m]}
+      className={cx(keyClass, 'text-xs font-semibold', mods[m] && 'bg-accent text-accent-fg active:bg-accent')}
+      {...pressProps(() => {
+        setMods({ ...mods, [m]: !mods[m] })
+        view.current?.focus()
+      })}
+    >
+      {m}
     </button>
   )
   const arrows = [
@@ -284,24 +340,18 @@ function TermKeys({
         {text('esc', '\x1b')}
         {text('tab', '\t')}
         {text('⇧tab', '\x1b[Z', 'Shift+Tab')}
-        <button
-          aria-label="Ctrl"
-          aria-pressed={ctrl}
-          className={cx(keyClass, 'text-xs font-semibold', ctrl && 'bg-accent text-accent-fg active:bg-accent')}
-          {...pressProps(() => {
-            setCtrl(!ctrl)
-            view.current?.focus()
-          })}
-        >
-          ctrl
-        </button>
+        {mod('ctrl', 'Ctrl')}
+        {mod('alt', 'Alt')}
         {arrows.map((a) => (
           <RepeatButton key={a.k} label={a.label} onFire={() => view.current?.arrow(a.k)}>
             <a.Icon className="h-[18px] w-[18px]" />
           </RepeatButton>
         ))}
+        <button aria-label="Paste" className={keyClass} {...pressProps(onPaste)}>
+          <ClipboardPaste className="h-[18px] w-[18px]" />
+        </button>
         {['|', '~', '/', '-'].map((c) => (
-          <button key={c} aria-label={c} className={keyClass} {...pressProps(() => send(c))}>
+          <button key={c} aria-label={c} className={keyClass} {...pressProps(() => key(c))}>
             <span className="font-mono text-[15px]">{c}</span>
           </button>
         ))}
@@ -333,6 +383,37 @@ function SelectBar({ onDone, onCopy, onCopyAll }: { onDone: () => void; onCopy: 
         <Copy className="h-4 w-4" />
         Copy
       </button>
+    </div>
+  )
+}
+
+/**
+ * Paste over plain HTTP, where the page can't read the clipboard: tap the
+ * field, choose Paste, and the text goes straight to the terminal.
+ */
+function PasteField({ onText, onClose }: { onText: (text: string) => void; onClose: () => void }) {
+  const field = useRef<HTMLTextAreaElement>(null)
+  // During the tap that opened it, so the keyboard comes up.
+  useLayoutEffect(() => field.current?.focus(), [])
+  return (
+    <div className="shrink-0 border-t border-line bg-raised px-safe">
+      <div className="flex items-center gap-1 py-1.5 pl-2">
+        <textarea
+          ref={field}
+          rows={1}
+          aria-label="Paste here"
+          placeholder="Tap here, then Paste"
+          className="h-9 min-w-0 flex-1 resize-none rounded-lg border border-line bg-surface px-3 py-1.5 leading-6 outline-none"
+          onPaste={(e) => {
+            e.preventDefault()
+            onText(e.clipboardData.getData('text/plain'))
+          }}
+          onBlur={onClose}
+        />
+        <button className={cx(keyClass, 'px-3 text-sm')} {...pressProps(onClose)}>
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }
