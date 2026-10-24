@@ -285,6 +285,16 @@ func TestLogGraph(t *testing.T) {
 		t.Errorf("root = %+v", root)
 	}
 
+	// The commit page lists the same refs.
+	show, err := svc.Show(ctx, repo, top.Hash)
+	if err != nil || !slices.Equal(show.Refs, top.Refs) {
+		t.Errorf("show refs = %+v %v", show.Refs, err)
+	}
+	show, err = svc.Show(ctx, repo, root.Hash)
+	if err != nil || !slices.Equal(show.Refs, root.Refs) {
+		t.Errorf("show refs = %+v %v", show.Refs, err)
+	}
+
 	all, err := svc.Log(ctx, repo, 50, 0, true)
 	if err != nil {
 		t.Fatal(err)

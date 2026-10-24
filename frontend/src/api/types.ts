@@ -195,7 +195,7 @@ export interface Commit {
   time: number
   subject: string
   body?: string
-  refs?: string[]
+  refs?: Ref[]
   parents?: string[]
 }
 

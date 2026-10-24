@@ -16,10 +16,14 @@ export interface TermHandle {
   snapshot(): TermSnapshot
 }
 
-/** Sticky modifiers from the key row: they apply to the next key, then turn off. */
+/**
+ * Sticky modifiers from the key row: 'once' applies to the next key, then
+ * turns off; 'locked' (a double tap) stays on until tapped off.
+ */
+export type Mod = false | 'once' | 'locked'
 export interface Mods {
-  ctrl: boolean
-  alt: boolean
+  ctrl: Mod
+  alt: Mod
 }
 export const noMods: Mods = { ctrl: false, alt: false }
 
@@ -73,7 +77,7 @@ export const TerminalView = forwardRef<
   {
     id: string
     mods: React.MutableRefObject<Mods>
-    onModsUsed: () => void
+    onModsUsed: (mods: Mods) => void
     onTitle: (title: string) => void
     onFocusChange: (focused: boolean) => void
     /** The connection failed or the shell exited: the parent rechecks the list. */
@@ -152,6 +156,14 @@ export const TerminalView = forwardRef<
     }
     connect()
 
+    // A key took the modifiers: one-shot ones turn off, locked ones stay.
+    const used = () => {
+      const { ctrl, alt } = mods.current
+      if (ctrl !== 'once' && alt !== 'once') return
+      mods.current = { ctrl: ctrl === 'once' ? false : ctrl, alt: alt === 'once' ? false : alt }
+      cb.current.onModsUsed(mods.current)
+    }
+
     // Apply sticky Ctrl/Alt to a key: Ctrl makes a control character,
     // Alt sends Escape first (what terminals do for Meta).
     const withMods = (d: string) => {
@@ -162,8 +174,7 @@ export const TerminalView = forwardRef<
         if (c >= 64 && c <= 95) d = String.fromCharCode(c & 31)
         else if (d === ' ') d = '\x00'
       }
-      mods.current = noMods
-      cb.current.onModsUsed()
+      used()
       return alt ? '\x1b' + d : d
     }
 
@@ -185,8 +196,7 @@ export const TerminalView = forwardRef<
         if (!ctrl && !alt) return send((term.modes.applicationCursorKeysMode ? '\x1bO' : '\x1b[') + k)
         // With modifiers: ESC [ 1 ; m, where m is 1 + 2 for Alt + 4 for Ctrl
         // (Alt+Left is a word back in most shells).
-        mods.current = noMods
-        cb.current.onModsUsed()
+        used()
         send(`\x1b[1;${1 + (alt ? 2 : 0) + (ctrl ? 4 : 0)}${k}`)
       },
       paste: (t) => term.paste(t),

@@ -1,18 +1,20 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { ChevronDown, ChevronRight, Copy } from 'lucide-react'
+import { ChevronDown, ChevronRight, CircleDot, Copy } from 'lucide-react'
 import { api } from '../../api/client'
 import { keys } from '../../api/queries'
-import type { CommitDetail } from '../../api/types'
+import type { CommitDetail, Ref } from '../../api/types'
 import { TopBar } from '../../components/TopBar'
 import { Page } from '../../components/Shell'
 import { ErrorView, IconButton, Loading } from '../../components/ui'
 import { useDialogs } from '../../components/dialogs'
 import { basename, dirname } from '../../lib/path'
-import { copyText, fullTime } from '../../lib/util'
+import { copyText, cx, fullTime } from '../../lib/util'
 import { DiffBody } from './DiffView'
 import { repoPath } from './gitApi'
+import { REF_COLOR, REMOTE_COLOR } from './graph'
+import { refIcon, refRank } from './HistoryList'
 
 export function CommitPage() {
   const [params] = useSearchParams()
@@ -57,6 +59,7 @@ export function CommitPage() {
           <>
             <div className="border-b border-line px-4 py-3">
               <div className="text-[17px] font-semibold leading-snug">{c.subject}</div>
+              {c.refs && <RefList refs={c.refs} />}
               {c.body && <pre className="mt-2 whitespace-pre-wrap font-sans text-[15px] text-fg/90">{c.body}</pre>}
               <div className="mt-2 text-xs text-muted">
                 {c.author} &lt;{c.email}&gt;
@@ -92,5 +95,37 @@ export function CommitPage() {
         )}
       </Page>
     </>
+  )
+}
+
+const refTitle = (r: Ref) =>
+  r.current ? 'Current branch' : r.upstream ? 'Upstream' : r.kind === 'branch' ? 'Branch' : r.kind === 'remote' ? 'Remote branch' : 'Tag'
+
+/** Every branch and tag at this commit, by name; the history list only has room for counts. */
+function RefList({ refs }: { refs: Ref[] }) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {[...refs]
+        .sort((a, b) => refRank(a) - refRank(b) || a.name.localeCompare(b.name))
+        .map((r) => {
+          const Icon = r.current ? CircleDot : refIcon[r.kind]
+          // Colored as in the history graph; the rest plain.
+          const color = r.current ? REF_COLOR : r.upstream ? REMOTE_COLOR : undefined
+          return (
+            <span
+              key={`${r.kind}:${r.name}`}
+              title={refTitle(r)}
+              className={cx(
+                'inline-flex h-6 max-w-full items-center gap-1 rounded-full px-2 text-xs font-semibold',
+                color ? 'text-[#111]' : 'border border-line bg-raised text-fg',
+              )}
+              style={color ? { backgroundColor: color } : undefined}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-label={refTitle(r)} />
+              <span className="truncate">{r.name}</span>
+            </span>
+          )
+        })}
+    </div>
   )
 }

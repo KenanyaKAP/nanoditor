@@ -105,7 +105,9 @@ function GraphCell({ shape }: { shape: RowShape }) {
   )
 }
 
-const refIcon = { branch: GitBranch, remote: Cloud, tag: Tag }
+export const refIcon = { branch: GitBranch, remote: Cloud, tag: Tag }
+/** Most important first: the checked-out branch, other branches, tags, its upstream, other remotes. */
+export const refRank = (r: Ref) => (r.current ? 0 : r.kind === 'branch' ? 1 : r.kind === 'tag' ? 2 : r.upstream ? 3 : 4)
 
 /**
  * VS Code-style ref pills: the most important ref with its name, the
@@ -113,8 +115,7 @@ const refIcon = { branch: GitBranch, remote: Cloud, tag: Tag }
  */
 function RefBadges({ refs, laneColor }: { refs?: Ref[]; laneColor: string }) {
   if (!refs?.length) return null
-  const rank = (r: Ref) => (r.current ? 0 : r.kind === 'branch' ? 1 : r.kind === 'tag' ? 2 : r.upstream ? 3 : 4)
-  const [main, ...rest] = [...refs].sort((a, b) => rank(a) - rank(b))
+  const [main, ...rest] = [...refs].sort((a, b) => refRank(a) - refRank(b))
   const upstream = rest.find((r) => r.upstream)
   const others = rest.filter((r) => r !== upstream)
   const MainIcon = main.current ? CircleDot : refIcon[main.kind]

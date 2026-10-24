@@ -267,7 +267,7 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
                   ref={view}
                   id={active.id}
                   mods={modsRef}
-                  onModsUsed={() => setMods(noMods)}
+                  onModsUsed={setMods}
                   onTitle={(t) => setTitles((old) => ({ ...old, [active.id]: t }))}
                   onFocusChange={setFocused}
                   onGone={refresh}
@@ -295,7 +295,11 @@ function Terminals({ status, home }: { status: TermStatus; home: string }) {
   )
 }
 
-/** Keys the phone keyboard lacks, in a row above it. Ctrl and Alt are sticky: they apply to the next key. */
+/**
+ * Keys the phone keyboard lacks, in a row above it. Ctrl and Alt are sticky:
+ * a tap applies them to the next key; a double tap locks them on, like the
+ * keyboard's caps lock, until tapped again.
+ */
 function TermKeys({
   view,
   mods,
@@ -315,17 +319,24 @@ function TermKeys({
       {label}
     </button>
   )
+  const lastTap = useRef({ m: '', at: 0 })
   const mod = (m: keyof Mods, label: string) => (
     <button
-      aria-label={label}
-      aria-pressed={mods[m]}
-      className={cx(keyClass, 'text-xs font-semibold', mods[m] && 'bg-accent text-accent-fg active:bg-accent')}
+      aria-label={mods[m] === 'locked' ? `${label} (locked)` : label}
+      aria-pressed={!!mods[m]}
+      className={cx(keyClass, 'relative text-xs font-semibold', mods[m] && 'bg-accent text-accent-fg active:bg-accent')}
       {...pressProps(() => {
-        setMods({ ...mods, [m]: !mods[m] })
+        const now = performance.now()
+        const double = lastTap.current.m === m && now - lastTap.current.at < 400
+        lastTap.current = { m, at: now }
+        const next = !mods[m] ? 'once' : mods[m] === 'once' && double ? 'locked' : false
+        setMods({ ...mods, [m]: next })
         view.current?.focus()
       })}
     >
       {m}
+      {/* Locked, marked as caps lock is: a bar under the label. */}
+      {mods[m] === 'locked' && <span className="absolute bottom-1.5 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full bg-current" />}
     </button>
   )
   const arrows = [

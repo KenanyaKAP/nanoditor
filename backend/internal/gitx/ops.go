@@ -231,7 +231,7 @@ type Commit struct {
 	Time    int64    `json:"time"`
 	Subject string   `json:"subject"`
 	Body    string   `json:"body,omitempty"`
-	Refs    []string `json:"refs,omitempty"`
+	Refs    []Ref    `json:"refs,omitempty"`
 	Parents []string `json:"parents,omitempty"`
 }
 
@@ -266,10 +266,7 @@ func (s *Service) Log(ctx context.Context, repo string, limit, skip int, all boo
 	if !s.hasHead(ctx, repo) {
 		return out, nil
 	}
-	upstream := ""
-	if r, err := s.R.run(ctx, repo, runOpts{}, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"); err == nil {
-		upstream = strings.TrimSpace(string(r.Stdout))
-	}
+	upstream := s.upstream(ctx, repo)
 	args := []string{"log", "--format=" + logFormat, "--decorate=full", "--topo-order",
 		"-n", strconv.Itoa(limit), "--skip", strconv.Itoa(skip)}
 	if all {
@@ -303,6 +300,15 @@ func (s *Service) Log(ctx context.Context, repo string, limit, skip int, all boo
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+// upstream names the current branch's upstream ("origin/main"), or "" if it has none.
+func (s *Service) upstream(ctx context.Context, repo string) string {
+	r, err := s.R.run(ctx, repo, runOpts{}, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(r.Stdout))
 }
 
 // parseDecorations reads a --decorate=full %D list such as
@@ -344,7 +350,7 @@ func (s *Service) Show(ctx context.Context, repo, rev string) (*CommitDetail, er
 		return nil, apperr.BadRequest("invalid revision")
 	}
 	res, err := s.R.run(ctx, repo, runOpts{}, "show", "--no-color", "--no-ext-diff", "-U3",
-		"--diff-merges=first-parent", "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%ct%x1f%s%x1f%b%x1f%D%x1f%P%x1e", rev, "--")
+		"--diff-merges=first-parent", "--decorate=full", "--format=%H%x1f%h%x1f%an%x1f%ae%x1f%ct%x1f%s%x1f%b%x1f%D%x1f%P%x1e", rev, "--")
 	if err != nil {
 		return nil, err
 	}
@@ -357,9 +363,7 @@ func (s *Service) Show(ctx context.Context, repo, rev string) (*CommitDetail, er
 	d := &CommitDetail{Commit: Commit{Hash: f[0], Short: f[1], Author: f[2], Email: f[3],
 		Subject: f[5], Body: strings.TrimSpace(f[6])}}
 	d.Time, _ = strconv.ParseInt(f[4], 10, 64)
-	if f[7] != "" {
-		d.Refs = strings.Split(f[7], ", ")
-	}
+	d.Refs, _ = parseDecorations(f[7], s.upstream(ctx, repo))
 	d.Parents = strings.Fields(f[8])
 	if len(body) > 2*maxDiffBytes {
 		body = body[:2*maxDiffBytes]
